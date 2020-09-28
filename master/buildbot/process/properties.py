@@ -18,6 +18,9 @@ import json
 import re
 import weakref
 
+# TODO: This is for debug purposes only. Remove when not needed.
+from twisted.python import log
+
 from twisted.internet import defer
 from twisted.python.components import registerAdapter
 from zope.interface import implementer
@@ -137,8 +140,20 @@ class Properties(util.ComparableMixin):
 
     def __getitem__(self, name):
         """Just get the value for this property."""
-        rv = self.properties[name][0]
-        return rv
+        # TODO: To debug weird missing "workdir" exception. Remove later.
+        try:
+            rv = self.properties[name][0]
+            return rv
+        except BaseException as e:
+            log.msg(">>> Exception: %s" % e)
+            log.msg(">>> Requested name=%s of an object %s" % (name, self.__class__))
+            log.msg(">>> self.properties = %s" % self.properties)
+            log.msg(">>> MRO: %s" % self.__class__.mro())
+            log.msg(">>> Obj dump:")
+            log.msg(">>>     self: %s" % self.__dict__)
+            for o in self.__class__.mro():
+                log.msg(">>>     %s: %s" % (o, o.__dict__))
+            raise
 
     def __bool__(self):
         return bool(self.properties)

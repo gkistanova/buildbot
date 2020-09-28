@@ -167,6 +167,8 @@ class BaseScheduler(ClusteredBuildbotService, StateMixin):
                               onlyImportant=False):
         assert fileIsImportant is None or callable(fileIsImportant)
 
+        log.msg(">>> BaseScheduler.startConsumingChanges(change_filter=%s)" % change_filter)
+
         # register for changes with the data API
         assert not self._change_consumer
         self._change_consumer = yield self.master.mq.startConsuming(
@@ -185,16 +187,21 @@ class BaseScheduler(ClusteredBuildbotService, StateMixin):
     def _changeCallback(self, key, msg, fileIsImportant, change_filter,
                         onlyImportant):
 
+        # LLVM: TODO: Why would we ignore changes? We should build them all instead.
+        log.msg(">>> BaseScheduler._changeCallback(key=%s, msg=%s, fileIsImportant=%s, change_filter=%s, onlyImportant=%s)" % (key, msg, fileIsImportant, change_filter, onlyImportant))
         # ignore changes delivered while we're not running
         if not self._change_consumer:
+            log.msg(">>> BaseScheduler._changeCallback: ignore changes delivered while we're not running.")
             return
 
         # get a change object, since the API requires it
         chdict = yield self.master.db.changes.getChange(msg['changeid'])
+        log.msg(">>>  BaseScheduler._changeCallback: chdict=%s" % chdict)
         change = yield changes.Change.fromChdict(self.master, chdict)
 
         # filter it
         if change_filter and not change_filter.filter_change(change):
+            log.msg(">>> BaseScheduler._changeCallback: The change didn't pass the filter and got ignored.")
             return
         if change.codebase not in self.codebases:
             log.msg(format='change contains codebase %(codebase)s that is '
@@ -239,6 +246,7 @@ class BaseScheduler(ClusteredBuildbotService, StateMixin):
     def addBuildsetForSourceStampsWithDefaults(self, reason, sourcestamps=None,
                                                waited_for=False, properties=None, builderNames=None,
                                                **kw):
+        log.msg(">>> BaseScheduler.addBuildsetForSourceStampsWithDefaults(reason=%s, sourcestamps=%s,waited_for=%s,properties=%s, builderNames=%s,kw=%s" % (reason,sourcestamps,waited_for,properties,builderNames,kw))
         if sourcestamps is None:
             sourcestamps = []
 
@@ -299,6 +307,7 @@ class BaseScheduler(ClusteredBuildbotService, StateMixin):
                               external_idstring=None, changeids=None, builderNames=None,
                               properties=None,
                               **kw):
+        log.msg(">>>  BaseScheduler.addBuildsetForChanges(waited_for=%s, reason=%s, external_idstring=%s, changeids=%s, builderNames=%s, properties=%s, kw=%s)" % (waited_for,reason,external_idstring,changeids,builderNames,properties,kw))
         if changeids is None:
             changeids = []
         changesByCodebase = {}
@@ -342,6 +351,7 @@ class BaseScheduler(ClusteredBuildbotService, StateMixin):
     def addBuildsetForSourceStamps(self, waited_for=False, sourcestamps=None,
                                    reason='', external_idstring=None, properties=None,
                                    builderNames=None, **kw):
+        log.msg(">>>  BaseScheduler.addBuildsetForSourceStamps(waited_for=%s, reason=%s, external_idstring=%s, sourcestamps=%s, builderNames=%s, properties=%s, kw=%s)" % (waited_for,reason,external_idstring,sourcestamps,builderNames,properties,kw))
         if sourcestamps is None:
             sourcestamps = []
         # combine properties

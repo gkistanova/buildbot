@@ -18,6 +18,8 @@ import re
 from buildbot.util import ComparableMixin
 from buildbot.util import NotABranch
 
+# TODO: This is for debug purposes only. Remove when not needed.
+from twisted.python import log
 
 class ChangeFilter(ComparableMixin):
 
@@ -74,10 +76,13 @@ class ChangeFilter(ComparableMixin):
                 ret[chg_attr] = (mklist_br(filt_list), mkre(filt_re), filt_fn)
             else:
                 ret[chg_attr] = (mklist(filt_list), mkre(filt_re), filt_fn)
+        log.msg(">>> ChangeFilter.createChecks returns %s" % ret)
         return ret
 
     def filter_change(self, change):
+        log.msg(">>> ChangeFilter.filter_change(change=%s)" % change)
         if self.filter_fn is not None and not self.filter_fn(change):
+            log.msg(">>> ChangeFilter.filter_change returns false, as self.filter_fn(change) returned false.")
             return False
         for chg_attr, (filt_list, filt_re, filt_fn) in self.checks.items():
             if chg_attr.startswith("prop:"):
@@ -86,11 +91,15 @@ class ChangeFilter(ComparableMixin):
             else:
                 chg_val = getattr(change, chg_attr, '')
             if filt_list is not None and chg_val not in filt_list:
+                log.msg(">>> ChangeFilter.filter_change returns false, as chg_val(%s) not in filt_list(%s)." % (chg_val,filt_list))
                 return False
             if filt_re is not None and (chg_val is None or not filt_re.match(chg_val)):
+                log.msg(">>> ChangeFilter.filter_change returns false, as filt_re is not None and (chg_val(%s) is None or not filt_re.match(chg_val)." % chg_val)
                 return False
             if filt_fn is not None and not filt_fn(chg_val):
+                log.msg(">>> ChangeFilter.filter_change returns false, as filt_fn is not None and filt_fn(chg_val=%s) returned false." % chg_val)
                 return False
+        log.msg(">>> ChangeFilter.filter_change returns true")
         return True
 
     def __repr__(self):

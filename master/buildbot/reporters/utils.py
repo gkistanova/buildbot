@@ -148,6 +148,7 @@ def getResponsibleUsersForSourceStamp(master, sourcestampid):
         blamelist.add(sourcestamp['patch']['author'])
     blamelist = list(blamelist)
     blamelist.sort()
+    log.msg(">>> reporters.utils.getResponsibleUsersForSourceStamp returns blamelist=%s" % blamelist)
     return blamelist
 
 
@@ -183,6 +184,7 @@ def getResponsibleUsersForBuild(master, buildid):
 
     blamelist = list(blamelist)
     blamelist.sort()
+    log.msg(">>> reporters.utils.getResponsibleUsersForBuild returns blamelist=%s" % blamelist)
     return blamelist
 
 

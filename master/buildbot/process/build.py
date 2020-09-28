@@ -147,6 +147,7 @@ class Build(properties.PropertiesMixin):
                 yield c
 
     def allChanges(self):
+        log.msg(">>> process.Build.allChanges returns %s" % Build.allChangesFromSources(self.sources))
         return Build.allChangesFromSources(self.sources)
 
     def allFiles(self):
@@ -174,6 +175,7 @@ class Build(properties.PropertiesMixin):
             if source.patch:  # Add patch author to blamelist
                 blamelist.append(source.patch_info[0])
         blamelist.sort()
+        log.msg(">>> process.Build.blamelist returns blamelist=%s" % blamelist)
         return blamelist
 
     def changesText(self):
@@ -227,6 +229,7 @@ class Build(properties.PropertiesMixin):
         # navigate our way back to the L{buildbot.worker.Worker}
         # object that came from the config, and get its properties
         workerforbuilder.worker.setupProperties(props)
+        log.msg(">>> process.Build.setupPropertiesKnownBeforeBuildStarts props=%s" % props.__dict__)
 
     def setupOwnProperties(self):
         # now set some properties of our own, corresponding to the
@@ -486,6 +489,7 @@ class Build(properties.PropertiesMixin):
         owners.update({r.properties['owner'] for r in self.requests
                        if "owner" in r.properties})
         if owners:
+            log.msg(">>> process.Build.setupBuild: owners=%s" % owners)
             self.setProperty('owners', sorted(owners), 'Build')
         self.text = []  # list of text string lists (text2)
 

@@ -15,6 +15,9 @@
 
 import calendar
 
+# TODO: This is for debug purposes only. Remove when not needed.
+from twisted.python import log
+
 from twisted.internet import defer
 
 from buildbot.data import resultspec
@@ -251,6 +254,7 @@ class BuildRequest:
     @staticmethod
     @defer.inlineCallbacks
     def canBeCollapsed(master, br1, br2):
+        log.msg(">>> canBeCollapsed for br1=%s and br2=%s" % (br1, br2))
         """
         Returns true if both buildrequest can be merged, via Deferred.
 
@@ -271,6 +275,7 @@ class BuildRequest:
                            for ss in selfBuildsets['sourcestamps'])
         otherSources = dict((ss['codebase'], ss)
                             for ss in otherBuildsets['sourcestamps'])
+        log.msg(">>> canBeCollapsed sourcestamps self=%s and other=%s" % (selfSources, otherSources))
 
         # if the sets of codebases do not match, we can't collapse
         if set(selfSources) != set(otherSources):
