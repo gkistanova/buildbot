@@ -723,7 +723,7 @@ class BuildStep(results.ResultComputingConfigMixin,
                 for success, res in unhandled_results:
                     if not success:
                         log.err(
-                            res, "from an asynchronous method executed in an old-style step")
+                            res, "from an asynchronous method executed in an old-style step: {}".format(self.__str__))
                         results = EXCEPTION
                 unhandled = self._start_unhandled_deferreds
 
