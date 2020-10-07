@@ -192,7 +192,10 @@ class RemoteCommand(base.RemoteCommandImpl):
         @type  updates: list of [object, int]
         @param updates: list of updates from the remote command
         """
-        updates = decode(updates)
+        # Dial with untrusted strings here. We could get any
+        # garbage, so preserve as much as possible but do not
+        # fail decoding.
+        updates = decode(updates, 'replace')
         self.worker.messageReceivedFromWorker()
         max_updatenum = 0
         for (update, num) in updates:
