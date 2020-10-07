@@ -124,7 +124,6 @@ class BaseBasicScheduler(base.BaseScheduler):
 
     @util.deferredLocked('_stable_timers_lock')
     def gotChange(self, change, important):
-        log.msg(">>> BaseBasicScheduler.gotChange: change=%s, important=%s" % (change, important))
         if not self.treeStableTimer:
             # if there's no treeStableTimer, we can completely ignore
             # unimportant changes
@@ -156,7 +155,6 @@ class BaseBasicScheduler(base.BaseScheduler):
 
     @defer.inlineCallbacks
     def scanExistingClassifiedChanges(self):
-        log.msg(">>> BaseBasicScheduler.scanExistingClassifiedChanges")
         # call gotChange for each classified change.  This is called at startup
         # and is intended to re-start the treeStableTimer for any changes that
         # had not yet been built when the scheduler was stopped.
@@ -211,27 +209,22 @@ class BaseBasicScheduler(base.BaseScheduler):
 class SingleBranchScheduler(AbsoluteSourceStampsMixin, BaseBasicScheduler):
 
     def __init__(self, name, createAbsoluteSourceStamps=False, **kwargs):
-        log.msg(">>> SingleBranchScheduler.__init__(name=\"%s\", createAbsoluteSourceStamps=%s, kwargs=%s)" % (name, createAbsoluteSourceStamps, kwargs))
         self.createAbsoluteSourceStamps = createAbsoluteSourceStamps
         super().__init__(name, **kwargs)
 
     @defer.inlineCallbacks
     def gotChange(self, change, important):
-        log.msg(">>> SingleBranchScheduler.gotChange(change=%s, important=%s)" % (change, important))
         if self.createAbsoluteSourceStamps:
             yield self.recordChange(change)
 
-        log.msg(">>> SingleBranchScheduler.gotChange calling super().gotChange")
         yield super().gotChange(change, important)
 
     def getCodebaseDict(self, codebase):
-        log.msg(">>> SingleBranchScheduler.getCodebaseDict(codebase=%s)" % codebase)
         if self.createAbsoluteSourceStamps:
             return super().getCodebaseDict(codebase)
         return self.codebases[codebase]
 
     def getChangeFilter(self, branch, branches, change_filter, categories):
-        log.msg(">>> SingleBranchScheduler.getChangeFilter(branch=%s, branches=%s, change_filter=%s, categories=%s)" % (branch, branches, change_filter, categories))
         if branch is NotABranch and not change_filter:
             config.error(
                 "the 'branch' argument to SingleBranchScheduler is " +

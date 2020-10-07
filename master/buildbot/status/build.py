@@ -86,7 +86,6 @@ class BuildStatus():
         return self.reason
 
     def getChanges(self):
-        log.msg(">>> BuildStatus.getChanges returns self.changes=%s" % self.changes)
         return self.changes
 
     def getRevisions(self):
@@ -99,7 +98,6 @@ class BuildStatus():
         return ", ".join(revs)
 
     def getResponsibleUsers(self):
-        log.msg(">>> BuildStatus.getResponsibleUsers returns self.blamelist=%s" % self.blamelist)
         return self.blamelist
 
     def getSteps(self):
@@ -194,18 +192,15 @@ class BuildStatus():
         self.testResults[result.getName()] = result
 
     def setSourceStamps(self, sourceStamps):
-        log.msg(">>> BuildStatus.setSourceStamps adds sourcestamps %s" % sourceStamps)
         self.sources = sourceStamps
         self.changes = []
         for source in self.sources:
             self.changes.extend(source.changes)
-        log.msg(">>> BuildStatus.setSourceStamps self.changes=%s" % self.changes)
 
     def setReason(self, reason):
         self.reason = reason
 
     def setBlamelist(self, blamelist):
-        log.msg(">>> BuildStatus.setBlamelist sets blamelist=%s" % blamelist)
         self.blamelist = blamelist
 
     def setProgress(self, progress):
