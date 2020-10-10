@@ -84,7 +84,13 @@ class BuildbotSession(server.Session):
         except jwt.exceptions.ExpiredSignatureError as e:
             raise KeyError(str(e))
         except Exception as e:
-            log.err(e, "while decoding JWT session")
+            if type(e) is jwt.exceptions.DecodeError and 'Signature verification failed' in e.args:
+                # Do not log this particular faiure. It a common one when buildbot
+                # has been restarted and WebUI users use old JWT session tockens.
+                # We do not want to spam logs with this.
+                pass
+            else:
+                log.err(e, "while decoding JWT session")
             raise KeyError(str(e))
         # might raise KeyError: will be caught by caller, which makes the token invalid
         self.user_info = decoded['user_info']
