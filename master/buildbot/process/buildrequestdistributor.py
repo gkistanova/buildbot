@@ -159,7 +159,7 @@ class BasicBuildChooser(BuildChooserBase):
     # must have the locks available.
 
     def __init__(self, bldr, master):
-        log.msg(">>> BasicBuildChooser.__init__(bldr={}, master={})".format((bldr, master)))
+        log.msg(">>> BasicBuildChooser.__init__(bldr={}, master={})".format(bldr, master))
         super().__init__(bldr, master)
 
         self.nextWorker = self.bldr.config.nextWorker
@@ -256,8 +256,10 @@ class BasicBuildChooser(BuildChooserBase):
         # use 'preferred' workers first, if we have some ready
         if self.preferredWorkers:
             worker = self.preferredWorkers.pop(0)
+            log.msg(">>> BasicBuildChooser._popNextWorker: self.preferredWorkers={}. return worker={}".format(self.preferredWorkers,worker))
             return worker
 
+        log.msg(">>> BasicBuildChooser._popNextWorker: self.workerpool={}".format(self.workerpool))
         while self.workerpool:
             try:
                 worker = yield self.nextWorker(self.bldr, self.workerpool, buildrequest)
@@ -268,11 +270,14 @@ class BasicBuildChooser(BuildChooserBase):
 
             if not worker or worker not in self.workerpool:
                 # bad worker or no worker returned
+                log.msg(">>> BasicBuildChooser._popNextWorker: Bad worker or no worker returned. worker={}".format(worker))
                 break
 
             self.workerpool.remove(worker)
+            log.msg(">>> BasicBuildChooser._popNextWorker: return worker={}.".format(worker))
             return worker
 
+        log.msg(">>> BasicBuildChooser._popNextWorker: return worker=None.")
         return None
 
     def _unpopWorkers(self, workers):
