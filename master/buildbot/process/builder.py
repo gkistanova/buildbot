@@ -187,17 +187,21 @@ class Builder(util_service.ReconfigurableServiceMixin,
         return None
 
     def addLatentWorker(self, worker):
+        #log.msg(">>> Builder.addLatentWorker(worker={})  self.workers={}".format(worker,  self.workers))
         assert interfaces.ILatentWorker.providedBy(worker)
         for w in self.workers:
             if w == worker:
+                #log.msg(">>> Builder.addLatentWorker: worker={} is already in self.workers={}.".format(worker, self.workers))
                 break
         else:
             wfb = workerforbuilder.LatentWorkerForBuilder(worker, self)
             self.workers.append(wfb)
+            #log.msg(">>> Builder.addLatentWorker: worker={} added to self.workers={}.".format(worker, self.workers))
             self.botmaster.maybeStartBuildsForBuilder(self.name)
 
     @defer.inlineCallbacks
     def attached(self, worker, commands):
+        #log.msg(">>> Builder.attached(worker={},commands={})".format(worker,commands))
         """This is invoked by the Worker when the self.workername bot
         registers their builder.
 
@@ -223,16 +227,21 @@ class Builder(util_service.ReconfigurableServiceMixin,
                 #
                 # Therefore, when we see that we're already attached, we can
                 # just ignore it.
+                #log.msg(">>> Builder.attached: worker={} already attached.".format(worker))
                 return self
 
         wfb = workerforbuilder.WorkerForBuilder()
         wfb.setBuilder(self)
         self.attaching_workers.append(wfb)
+        #log.msg(">>> Builder.attached: worker={} added to self.attaching_workers={}.".format(worker, self.attaching_workers))
 
         try:
+            #log.msg(">>> Builder.attached: worker={} added to self.attaching_workers={}.".format(worker, self.attaching_workers))
             wfb = yield wfb.attached(worker, commands)
             self.attaching_workers.remove(wfb)
+            #log.msg(">>> Builder.attached: worker={} removed from self.attaching_workers={}.".format(worker, self.attaching_workers))
             self.workers.append(wfb)
+            #log.msg(">>> Builder.attached: worker={} added to self.workers={}.".format(worker, self.workers))
             return self
 
         except Exception as e:  # pragma: no cover
@@ -243,6 +252,7 @@ class Builder(util_service.ReconfigurableServiceMixin,
             return None
 
     def detached(self, worker):
+        #log.msg(">>> Builder.detached(worker={})".format(worker))
         """This is called when the connection to the bot is lost."""
         for wfb in self.attaching_workers + self.workers:
             if wfb.worker == worker:
@@ -255,14 +265,18 @@ class Builder(util_service.ReconfigurableServiceMixin,
             return
 
         if wfb in self.attaching_workers:
+            #log.msg(">>> Builder.detached: worker={} got removed from self.attaching_workers={}".format(worker, self.attaching_workers))
             self.attaching_workers.remove(wfb)
         if wfb in self.workers:
+            #log.msg(">>> Builder.detached: worker={} got removed from self.workers={}".format(worker, self.workers))
             self.workers.remove(wfb)
 
         # inform the WorkerForBuilder that their worker went away
         wfb.detached()
 
     def getAvailableWorkers(self):
+        #log.msg(">>> Builder.getAvailableWorkers: self.workers={}".format(self.workers))
+        #log.msg(">>> Builder.getAvailableWorkers: available workers={}".format([wfb for wfb in self.workers if wfb.isAvailable()]))
         return [wfb for wfb in self.workers if wfb.isAvailable()]
 
     @defer.inlineCallbacks

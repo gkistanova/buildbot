@@ -50,7 +50,7 @@ class BuildChooserBase:
     #   * bc.popNextBuild() - get the next (worker, breq) pair
 
     def __init__(self, bldr, master):
-        log.msg(">>> BuildChooserBase.__init__(bldr={},master={})".format(bldr, master))
+        #log.msg(">>> BuildChooserBase.__init__(bldr={},master={})".format(bldr, master))
         self.bldr = bldr
         self.master = master
         self.breqCache = {}
@@ -62,10 +62,10 @@ class BuildChooserBase:
 
         worker, breq = yield self.popNextBuild()
         if not worker or not breq:
-            log.msg(">>> BuildChooserBase.chooseNextBuild about to return (None, None).")
+            #log.msg(">>> BuildChooserBase.chooseNextBuild about to return (None, None).")
             return (None, None)
 
-        log.msg(">>> BuildChooserBase.chooseNextBuild about to return {}".format((worker, [breq])))
+        #log.msg(">>> BuildChooserBase.chooseNextBuild about to return {}".format((worker, [breq])))
         return (worker, [breq])
 
     # Must be implemented by subclass
@@ -92,7 +92,7 @@ class BuildChooserBase:
             # sort by submitted_at, so the first is the oldest
             brdicts.sort(key=lambda brd: brd['submitted_at'])
             self.unclaimedBrdicts = brdicts
-        log.msg(">>> BuildChooserBase._fetchUnclaimedBrdicts: self.unclaimedBrdicts={}".format(self.unclaimedBrdicts))
+        #log.msg(">>> BuildChooserBase._fetchUnclaimedBrdicts: self.unclaimedBrdicts={}".format(self.unclaimedBrdicts))
         return self.unclaimedBrdicts
 
     @defer.inlineCallbacks
@@ -135,7 +135,7 @@ class BuildChooserBase:
             del self.breqCache[breq.id]
 
     def _getUnclaimedBuildRequests(self):
-        log.msg(">>> BuildChooserBase._getUnclaimedBuildRequests")
+        #log.msg(">>> BuildChooserBase._getUnclaimedBuildRequests")
         # Retrieve the list of BuildRequest objects for all unclaimed builds
         return defer.gatherResults([
             self._getBuildRequestForBrdict(brdict)
@@ -159,12 +159,12 @@ class BasicBuildChooser(BuildChooserBase):
     # must have the locks available.
 
     def __init__(self, bldr, master):
-        log.msg(">>> BasicBuildChooser.__init__(bldr={}, master={})".format(bldr, master))
+        #log.msg(">>> BasicBuildChooser.__init__(bldr={}, master={})".format(bldr, master))
         super().__init__(bldr, master)
 
         self.nextWorker = self.bldr.config.nextWorker
         if not self.nextWorker:
-            log.msg(">>> BasicBuildChooser.__init__: not self.nextWorker, choose randomly.")
+            #log.msg(">>> BasicBuildChooser.__init__: not self.nextWorker, choose randomly.")
             self.nextWorker = lambda _, workers, __: random.choice(
                 workers) if workers else None
 
@@ -176,24 +176,24 @@ class BasicBuildChooser(BuildChooserBase):
         self.preferredWorkers = []
 
         self.nextBuild = self.bldr.config.nextBuild
-        log.msg(">>> BasicBuildChooser.__init__: self.nextWorker={}, self.workerpool={}, self.nextBuild={}".format(self.nextWorker, self.workerpool, self.nextBuild))
+        #log.msg(">>> BasicBuildChooser.__init__: self.nextWorker={}, self.workerpool={}, self.nextBuild={}".format(self.nextWorker, self.workerpool, self.nextBuild))
 
     @defer.inlineCallbacks
     def popNextBuild(self):
-        log.msg(">>> BasicBuildChooser.popNextBuild.")
+        #log.msg(">>> BasicBuildChooser.popNextBuild.")
         nextBuild = (None, None)
 
         while True:
             #  1. pick a build
             breq = yield self._getNextUnclaimedBuildRequest()
             if not breq:
-                log.msg(">>> BasicBuildChooser.popNextBuild: not _getNextUnclaimedBuildRequest -> break")
+                #log.msg(">>> BasicBuildChooser.popNextBuild: not _getNextUnclaimedBuildRequest -> break")
                 break
 
             #  2. pick a worker
             worker = yield self._popNextWorker(breq)
             if not worker:
-                log.msg(">>> BasicBuildChooser.popNextBuild: not _popNextWorker -> break")
+                #log.msg(">>> BasicBuildChooser.popNextBuild: not _popNextWorker -> break")
                 break
 
             # either satisfy this build or we leave it for another day
@@ -204,26 +204,26 @@ class BasicBuildChooser(BuildChooserBase):
             while worker:
                 canStart = yield self.canStartBuild(worker, breq)
                 if canStart:
-                    log.msg(">>> BasicBuildChooser.popNextBuild: canStartBuild(worker={}, breq={}) -> break".format(worker, breq))
+                    #log.msg(">>> BasicBuildChooser.popNextBuild: canStartBuild(worker={}, breq={}) -> break".format(worker, breq))
                     break
                 # try a different worker
                 recycledWorkers.append(worker)
                 worker = yield self._popNextWorker(breq)
-                log.msg(">>> BasicBuildChooser.popNextBuild: try a different worker={}.".format(worker))
+                #log.msg(">>> BasicBuildChooser.popNextBuild: try a different worker={}.".format(worker))
 
             # recycle the workers that we didn't use to the head of the queue
             # this helps ensure we run 'nextWorker' only once per worker choice
             if recycledWorkers:
-                log.msg(">>> BasicBuildChooser.popNextBuild: self._unpopWorkers(recycledWorkers={})".format(recycledWorkers))
+                #log.msg(">>> BasicBuildChooser.popNextBuild: self._unpopWorkers(recycledWorkers={})".format(recycledWorkers))
                 self._unpopWorkers(recycledWorkers)
 
             #  4. done? otherwise we will try another build
             if worker:
                 nextBuild = (worker, breq)
-                log.msg(">>> BasicBuildChooser.popNextBuild: nextBuild=(worker={}, breq={}) -> break".format(worker, breq))
+                #log.msg(">>> BasicBuildChooser.popNextBuild: nextBuild=(worker={}, breq={}) -> break".format(worker, breq))
                 break
 
-        log.msg(">>> BasicBuildChooser.popNextBuild: return nextBuild={}".format(nextBuild))
+        #log.msg(">>> BasicBuildChooser.popNextBuild: return nextBuild={}".format(nextBuild))
         return nextBuild
 
     @defer.inlineCallbacks
@@ -256,10 +256,10 @@ class BasicBuildChooser(BuildChooserBase):
         # use 'preferred' workers first, if we have some ready
         if self.preferredWorkers:
             worker = self.preferredWorkers.pop(0)
-            log.msg(">>> BasicBuildChooser._popNextWorker: self.preferredWorkers={}. return worker={}".format(self.preferredWorkers,worker))
+            #log.msg(">>> BasicBuildChooser._popNextWorker: self.preferredWorkers={}. return worker={}".format(self.preferredWorkers,worker))
             return worker
 
-        log.msg(">>> BasicBuildChooser._popNextWorker: self.workerpool={}".format(self.workerpool))
+        #log.msg(">>> BasicBuildChooser._popNextWorker: self.workerpool={}".format(self.workerpool))
         while self.workerpool:
             try:
                 worker = yield self.nextWorker(self.bldr, self.workerpool, buildrequest)
@@ -270,14 +270,14 @@ class BasicBuildChooser(BuildChooserBase):
 
             if not worker or worker not in self.workerpool:
                 # bad worker or no worker returned
-                log.msg(">>> BasicBuildChooser._popNextWorker: Bad worker or no worker returned. worker={}".format(worker))
+                #log.msg(">>> BasicBuildChooser._popNextWorker: Bad worker or no worker returned. worker={}".format(worker))
                 break
 
             self.workerpool.remove(worker)
-            log.msg(">>> BasicBuildChooser._popNextWorker: return worker={}.".format(worker))
+            #log.msg(">>> BasicBuildChooser._popNextWorker: return worker={}.".format(worker))
             return worker
 
-        log.msg(">>> BasicBuildChooser._popNextWorker: return worker=None.")
+        #log.msg(">>> BasicBuildChooser._popNextWorker: return worker=None.")
         return None
 
     def _unpopWorkers(self, workers):
@@ -344,7 +344,7 @@ class BuildRequestDistributor(service.AsyncMultiService):
         @param new_builders: names of new builders that should be given the
         opportunity to check for new requests.
         """
-        log.msg(">>> BuildRequestDistributor.maybeStartBuildsOn(new_builders={}".format(new_builders))
+        #log.msg(">>> BuildRequestDistributor.maybeStartBuildsOn(new_builders={}".format(new_builders))
         if not self.running:
             return
 
@@ -360,13 +360,13 @@ class BuildRequestDistributor(service.AsyncMultiService):
 
     @defer.inlineCallbacks
     def _maybeStartBuildsOn(self, new_builders):
-        log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn(new_builders={})".format(new_builders))
+        #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn(new_builders={})".format(new_builders))
         new_builders = set(new_builders)
         existing_pending = set(self._pending_builders)
 
         # if we won't add any builders, there's nothing to do
         if new_builders < existing_pending:
-            log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn: new_builders({}) < existing_pending({}). return None".format(new_builders, existing_pending))
+            #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn: new_builders({}) < existing_pending({}). return None".format(new_builders, existing_pending))
             return None
 
         # reset the list of pending builders
@@ -385,10 +385,10 @@ class BuildRequestDistributor(service.AsyncMultiService):
                 # start the activity loop, if we aren't already
                 # working on that.
                 if not self.active:
-                    log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn.resetPendingBuildersList: Start activity loop for self._pending_builders={}".format(self._pending_builders))
+                    #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn.resetPendingBuildersList: Start activity loop for self._pending_builders={}".format(self._pending_builders))
                     self._activity_loop_deferred = self._activityLoop()
                 else:
-                    log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn.resetPendingBuildersList: Do not start activity loop. not self.active")
+                    #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn.resetPendingBuildersList: Do not start activity loop. not self.active")
 
             except Exception:  # pragma: no cover
                 log.err(Failure(),
@@ -510,21 +510,21 @@ class BuildRequestDistributor(service.AsyncMultiService):
             self.activity_lock.release()
 
         timer.stop()
-        log.msg(">>> BuildRequestDistributor._activityLoop: Finished.")
+        #log.msg(">>> BuildRequestDistributor._activityLoop: Finished.")
         self.active = False
 
     @defer.inlineCallbacks
     def _maybeStartBuildsOnBuilder(self, bldr):
-        log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder(bldr={})".format(bldr))
+        #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder(bldr={})".format(bldr))
         # create a chooser to give us our next builds
         # this object is temporary and will go away when we're done
         bc = self.createBuildChooser(bldr, self.master)
 
         while True:
             worker, breqs = yield bc.chooseNextBuild()
-            log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: bc.chooseNextBuild() returned worker={}, breqs={}".format(worker, breqs))
+            #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: bc.chooseNextBuild() returned worker={}, breqs={}".format(worker, breqs))
             if not worker or not breqs:
-                log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: not worker or not breqs -> break.")
+                #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: not worker or not breqs -> break.")
                 break
 
             # claim brid's
@@ -534,18 +534,18 @@ class BuildRequestDistributor(service.AsyncMultiService):
             if not (yield self.master.data.updates.claimBuildRequests(
                     brids, claimed_at=claimed_at)):
                 # some brids were already claimed, so start over
-                log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: Didn't claim. Some brids were already claimed, so start over.")
+                #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: Didn't claim. Some brids were already claimed, so start over.")
                 bc = self.createBuildChooser(bldr, self.master)
                 continue
 
             buildStarted = yield bldr.maybeStartBuild(worker, breqs)
-            log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: buildStarted={} for breqs={}".format(buildStarted,breqs))
+            #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: buildStarted={} for breqs={}".format(buildStarted,breqs))
             if not buildStarted:
-                log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: Build didn't start. Unclaim it.")
+                #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: Build didn't start. Unclaim it.")
                 yield self.master.data.updates.unclaimBuildRequests(brids)
                 # try starting builds again.  If we still have a working worker,
                 # then this may re-claim the same buildrequests
-                log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: Try starting builds again by calling self.botmaster.maybeStartBuildsForBuilder(self.name).")
+                #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOnBuilder: Try starting builds again by calling self.botmaster.maybeStartBuildsForBuilder(self.name).")
                 self.botmaster.maybeStartBuildsForBuilder(self.name)
 
     def createBuildChooser(self, bldr, master):
