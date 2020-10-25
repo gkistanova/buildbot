@@ -387,7 +387,7 @@ class BuildRequestDistributor(service.AsyncMultiService):
                 if not self.active:
                     #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn.resetPendingBuildersList: Start activity loop for self._pending_builders={}".format(self._pending_builders))
                     self._activity_loop_deferred = self._activityLoop()
-                else:
+                #else:
                     #log.msg(">>> BuildRequestDistributor._maybeStartBuildsOn.resetPendingBuildersList: Do not start activity loop. not self.active")
 
             except Exception:  # pragma: no cover
