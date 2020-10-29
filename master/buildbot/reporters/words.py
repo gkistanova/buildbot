@@ -144,7 +144,8 @@ class Channel(service.AsyncService):
                           # this is deprecated list
                           "(success|warnings|failure|exception)To"
                           "(Success|Warnings|Failure|Exception))$").match(event):
-            raise UsageError("Try '" + self.bot.commandPrefix + "notify on|off _EVENT_'.")
+            raise UsageError(
+                    "Event {} is invalid. Try '{}notify on|off _EVENT_'.".format(event,self.bot.commandPrefix))
 
     @defer.inlineCallbacks
     def list_notified_events(self):
@@ -307,6 +308,7 @@ class Channel(service.AsyncService):
                     # Add the commiter to blame list if somebody else has
                     # commited in behalf of the author.
                     blamelist.append(ch['committer'])
+
             r += '  blamelist: ' + ', '.join(blamelist)
         self.send(r)
 
