@@ -44,7 +44,7 @@ class HgPoller(base.ReconfigurablePollingChangeSource, StateMixin):
             branches = self.build_branches(kwargs.get('branch', None), kwargs.get('branches', None))
             kwargs["name"] = self.build_name(None, repourl, kwargs.get('bookmarks', None), branches)
 
-        self.initLock = defer.DeferredLock()
+        self.initLock3 = defer.DeferredLock()
 
         super().__init__(repourl, **kwargs)
 
@@ -139,7 +139,7 @@ class HgPoller(base.ReconfigurablePollingChangeSource, StateMixin):
         return (f"HgPoller watching the remote Mercurial repository '{self.repourl}', "
                 f"branches: {', '.join(self.branches)}, in workdir '{self.workdir}' {status}")
 
-    @deferredLocked('initLock')
+    @deferredLocked('initLock3')
     @defer.inlineCallbacks
     def poll(self):
         yield self._getChanges()
