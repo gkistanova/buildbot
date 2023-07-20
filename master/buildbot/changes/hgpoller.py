@@ -85,7 +85,7 @@ class HgPoller(base.PollingChangeSource, StateMixin):
         self.category = category if callable(
             category) else bytes2unicode(category)
         self.project = project
-        self.initLock = defer.DeferredLock()
+        self.initLock3 = defer.DeferredLock()
         self.lastRev = {}
         self.revlink_callable = revlink
 
@@ -105,7 +105,7 @@ class HgPoller(base.PollingChangeSource, StateMixin):
                  "branches: {}, in workdir '{}' {}").format(self.repourl, ', '.join(self.branches),
                                                             self.workdir, status))
 
-    @deferredLocked('initLock')
+    @deferredLocked('initLock3')
     def poll(self):
         d = self._getChanges()
         d.addCallback(self._processChanges)

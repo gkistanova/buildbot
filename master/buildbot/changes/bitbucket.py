@@ -70,13 +70,13 @@ class BitbucketPullrequestPoller(base.PollingChangeSource):
         self.category = category if callable(
             category) else bytes2unicode(category)
         self.project = bytes2unicode(project)
-        self.initLock = defer.DeferredLock()
+        self.initLock2 = defer.DeferredLock()
 
     def describe(self):
         return "BitbucketPullrequestPoller watching the "\
             "Bitbucket repository {}/{}, branch: {}".format(self.owner, self.slug, self.branch)
 
-    @deferredLocked('initLock')
+    @deferredLocked('initLock2')
     def poll(self):
         d = self._getChanges()
         d.addCallback(self._processChanges)
