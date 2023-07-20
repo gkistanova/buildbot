@@ -42,7 +42,8 @@ class ChangesConnectorComponent(base.DBConnectorComponent):
             q = sa.select([changes_tbl.c.changeid],
                           whereclause=((changes_tbl.c.branch == branch) &
                                        (changes_tbl.c.repository == repository) &
-                                       (changes_tbl.c.project == project) &
+                                       # LLVM_LOCAL: We do not filter by projects.
+                                       #(changes_tbl.c.project == project) &
                                        (changes_tbl.c.codebase == codebase)),
                           order_by=sa.desc(changes_tbl.c.changeid),
                           limit=1)
@@ -177,42 +178,49 @@ class ChangesConnectorComponent(base.DBConnectorComponent):
     def getChangesForBuild(self, buildid):
         assert buildid > 0
 
-        gssfb = self.master.db.sourcestamps.getSourceStampsForBuild
-        changes = []
-        currentBuild = yield self.master.db.builds.getBuild(buildid)
-        fromChanges, toChanges = {}, {}
-        ssBuild = yield gssfb(buildid)
-        for ss in ssBuild:
-            fromChanges[ss['codebase']] = yield self.getChangeFromSSid(ss['ssid'])
+        # LLVM_LOCAL begin
+        # Get a list of changes for this particular build, as
+        # all the changes from this build with all the changes
+        # from all the skipped builds since the previous
+        # completed build.
+        # TODO: Make this more SqlAlchemy way.
+        def thd(conn):
+            q = sa.sql.text(
+                "WITH this AS ( " \
+                    "SELECT buildrequestid AS brqid, builds.builderid AS bldrid FROM builds, buildrequests " \
+                    "WHERE builds.buildrequestid = buildrequests.id AND builds.id = :buildid " \
+                    "LIMIT 1 " \
+                ") " \
+                "SELECT changes.* " \
+                "FROM " \
+                    "changes " \
+                    "INNER JOIN buildset_sourcestamps AS bs_sst USING(sourcestampid) " \
+                    "INNER JOIN ( " \
+                        "SELECT DISTINCT buildsetid " \
+                        "FROM buildrequests, this " \
+                        "WHERE " \
+                            "builderid = this.bldrid AND " \
+                            "buildrequests.id <= this.brqid AND " \
+                            "buildrequests.id > ( " \
+                                "SELECT id " \
+                                "FROM buildrequests, this " \
+                                "WHERE " \
+                                    "builderid = this.bldrid AND " \
+                                    "buildrequests.id < this.brqid AND " \
+                                    "results <> 3 " \
+                                "ORDER BY id DESC LIMIT 1 " \
+                            ") " \
+                    ") AS bs USING (buildsetid) " \
+                "ORDER BY id DESC;"
+            )
 
-        # Get the last successful build on the same builder
-        previousBuild = yield self.master.db.builds.getPrevSuccessfulBuild(
-                currentBuild['builderid'], currentBuild['number'], ssBuild)
-        if previousBuild:
-            for ss in (yield gssfb(previousBuild['id'])):
-                toChanges[ss['codebase']] = yield self.getChangeFromSSid(ss['ssid'])
-        else:
-            # If no successful previous build, then we need to catch all
-            # changes
-            for cb in fromChanges:
-                toChanges[cb] = {'changeid': None}
-
-        # For each codebase, append changes until we match the parent
-        for cb, change in fromChanges.items():
-            # Careful; toChanges[cb] may be None from getChangeFromSSid
-            toCbChange = toChanges.get(cb) or {}
-            if change and change['changeid'] != toCbChange.get('changeid'):
-                changes.append(change)
-                while ((toCbChange.get('changeid') not in change['parent_changeids']) and
-                       change['parent_changeids']):
-                    # For the moment, a Change only have 1 parent.
-                    change = yield self.master.db.changes.getChange(change['parent_changeids'][0])
-                    # http://trac.buildbot.net/ticket/3461 sometimes,
-                    # parent_changeids could be corrupted
-                    if change is None:
-                        break
-                    changes.append(change)
-        return changes
+            rows = conn.execute(q, buildid=buildid)
+            changes = [
+                self._chdict_from_change_row_thd(conn, r)
+                for r in rows.fetchall()]
+            return changes
+        return (yield self.db.pool.do(thd))
+        # LLVM_LOCAL end
 
     # returns a Deferred that returns a value
     def getChangeFromSSid(self, sourcestampid):
