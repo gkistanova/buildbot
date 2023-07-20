@@ -91,7 +91,15 @@ class BuildbotSession(server.Session):
                     "Signature verification failed while decoding JWT.")
             raise KeyError(str(e)) from e
         except Exception as e:
-            log.err(e, "while decoding JWT session")
+            # LLVM_LOCAL begin
+            if type(e) is jwt.exceptions.DecodeError and 'Signature verification failed' in e.args:
+                # Do not log this particular faiure. It is a common one when buildbot
+                # gets restarted and WebUI users are still using old JWT session tockens.
+                # We do not want to spam logs with this.
+                pass
+            else:
+                log.err(e, "while decoding JWT session")
+            # LLVM_LOCAL end
             raise KeyError(str(e)) from e
         # might raise KeyError: will be caught by caller, which makes the token invalid
         self.user_info = decoded['user_info']
