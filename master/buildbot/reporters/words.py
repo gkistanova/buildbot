@@ -301,9 +301,19 @@ class Channel(service.AsyncService):
         else:
             r += "."
 
-        # FIXME: where do we get the list of changes for a build ?
-        # if self.bot.showBlameList and buildResult != SUCCESS and len(build.changes) != 0:
-        #    r += '  blamelist: ' + ', '.join(list(set([c.who for c in build.changes])))
+        # LLVM_LOCAL begin
+        if self.bot.showBlameList and build['results'] != SUCCESS:
+            blamelist = []
+            changes = yield self.master.db.changes.getChangesForBuild(build['buildid'])
+            for ch in changes:
+                blamelist.append(ch['author'])
+                if ch['committer']:
+                    # Add the commiter to blame list if somebody else has
+                    # commited in behalf of the author.
+                    blamelist.append(ch['committer'])
+            r += '  blamelist: ' + ', '.join(blamelist)
+        # LLVM_LOCAL end
+
         self.send(r)
 
     @defer.inlineCallbacks
