@@ -32,6 +32,7 @@ from buildbot.process.results import FAILURE
 from buildbot.process.results import SUCCESS
 from buildbot.process.results import WARNINGS
 from buildbot.process.results import Results
+from buildbot.process.results import statusToString
 from buildbot.process.results import worst_status
 from buildbot.steps.worker import CompositeStepMixin
 from buildbot.util import command_to_string
@@ -177,7 +178,7 @@ class ShellCommand(buildstep.LoggingBuildStep):
 
         if cmdsummary:
             if self.results != SUCCESS:
-                cmdsummary += ' ({})'.format(Results[self.results])
+                cmdsummary += ' ({})'.format(statusToString(self.results))
             return {'step': cmdsummary}
 
         return super(ShellCommand, self).getResultSummary()
