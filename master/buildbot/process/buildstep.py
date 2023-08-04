@@ -52,6 +52,7 @@ from buildbot.process.results import SKIPPED
 from buildbot.process.results import SUCCESS
 from buildbot.process.results import WARNINGS
 from buildbot.process.results import Results
+from buildbot.process.results import statusToString
 from buildbot.process.results import worst_status
 from buildbot.util import bytes2unicode
 from buildbot.util import debounce
@@ -451,7 +452,7 @@ class BuildStep(results.ResultComputingConfigMixin,
             stepsumm = 'finished'
 
         if self.results != SUCCESS:
-            stepsumm += ' ({})'.format(Results[self.results])
+            stepsumm += ' ({})'.format(statusToString(self.results))
 
         return {'step': stepsumm}
 
