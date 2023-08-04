@@ -29,6 +29,7 @@ from buildbot.process.results import FAILURE
 from buildbot.process.results import SUCCESS
 from buildbot.process.results import WARNINGS
 from buildbot.process.results import Results
+from buildbot.process.results import statusToString
 from buildbot.process.results import worst_status
 from buildbot.steps.worker import CompositeStepMixin
 from buildbot.util import join_list
@@ -517,7 +518,7 @@ class Test(WarningCountingShellCommand):
             if description:
                 summary = join_list(description)
                 if self.results != SUCCESS:
-                    summary += f' ({Results[self.results]})'
+                    summary += f' ({statusToString(self.results)})'
                 return {'step': summary}
 
         return super().getResultSummary()

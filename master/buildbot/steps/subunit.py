@@ -24,6 +24,7 @@ from buildbot.process import logobserver
 from buildbot.process.results import FAILURE
 from buildbot.process.results import SUCCESS
 from buildbot.process.results import Results
+from buildbot.process.results import statusToString
 
 
 class SubunitLogObserver(logobserver.LogLineObserver, TestResult):
@@ -164,6 +165,6 @@ class SubunitShellCommand(buildstep.ShellMixin, buildstep.BuildStep):
         # TODO: expectedFailures/unexpectedSuccesses
 
         if self.results != SUCCESS:
-            summary += f' ({Results[self.results]})'
+            summary += f' ({statusToString(self.results)})'
 
         return {'step': summary}
