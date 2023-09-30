@@ -289,7 +289,7 @@ class BuildRequestDistributor(service.AsyncMultiService):
         self.botmaster = botmaster
 
         # lock to ensure builders are only sorted once at any time
-        self.pending_builders_lock = defer.DeferredLock()
+        #LLVM_LOCAL self.pending_builders_lock = defer.DeferredLock()
 
         # sorted list of names of builders that need their maybeStartBuild
         # method invoked.
@@ -332,37 +332,41 @@ class BuildRequestDistributor(service.AsyncMultiService):
         except Exception as e:  # pragma: no cover
             log.err(e, f"while starting builds on {new_builders}")
 
+    #LLVM_LOCAL begin
+    #@defer.inlineCallbacks
+    #def _resetPendingBuildersList(self, new_builders):
+    #    #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn(new_builders={new_builders}) >>> resetPendingBuildersList START... _pending_builders({len(self._pending_builders)})")
+    #    self._pending_builders = yield self._sortBuilders(list(set(self._pending_builders) | new_builders))
+    #    #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn(new_builders={new_builders}) >>> resetPendingBuildersList END _pending_builders({len(self._pending_builders)})")
+    #LLVM_LOCAL end
+
     @defer.inlineCallbacks
     def _maybeStartBuildsOn(self, new_builders):
+        #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn(new_builders={new_builders})")
         new_builders = set(new_builders)
         existing_pending = set(self._pending_builders)
 
         # if we won't add any builders, there's nothing to do
         if new_builders < existing_pending:
+            #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn: new_builders({len(new_builders)}) < existing_pending({len(existing_pending)}). return None")
             return None
 
-        # reset the list of pending builders
-        @defer.inlineCallbacks
-        def resetPendingBuildersList(new_builders):
-            try:
-                # re-fetch existing_pending, in case it has changed
-                # while acquiring the lock
-                existing_pending = set(self._pending_builders)
+        #LLVM_LOCAL begin
+        try:
+            #yield self.pending_builders_lock.run(self._resetPendingBuildersList, new_builders)
+            # Don't call _sortBuilders() and set _pending_builders directly.
+            self._pending_builders = list(existing_pending | new_builders)
+            yield
 
-                # then sort the new, expanded set of builders
-                self._pending_builders = \
-                    yield self._sortBuilders(
-                        list(existing_pending | new_builders))
+            # start the activity loop, if we aren't already
+            # working on that.
+            if not self.active:
+                #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn: Start activity loop for self._pending_builders={self._pending_builders}")
+                self._activity_loop_deferred = self._activityLoop()
+        except Exception:  # pragma: no cover
+            log.err(Failure(), f"while attempting to start builds on {self.name}")
 
-                # start the activity loop, if we aren't already
-                # working on that.
-                if not self.active:
-                    self._activity_loop_deferred = self._activityLoop()
-            except Exception:  # pragma: no cover
-                log.err(Failure(), f"while attempting to start builds on {self.name}")
-
-        yield self.pending_builders_lock.run(
-            resetPendingBuildersList, new_builders)
+        #LLVM_LOCAL end
         return None
 
     @defer.inlineCallbacks
@@ -420,48 +424,65 @@ class BuildRequestDistributor(service.AsyncMultiService):
         timer.stop()
         return rv
 
+    #LLVM_LOCAL begin
+    #def _getPendingBuilders(self, pending_builders):
+    #    #log.msg(">>> BuildRequestDistributor._activityLoop: _getPendingBuilders START...")
+    #    # pending_builders is mutable
+    #    # pending_builders.clear()
+    #    assert len(pending_builders) == 0
+    #    if self._pending_builders:
+    #        pending_builders.extend(self._pending_builders)
+    #        self._pending_builders = []
+    #    #log.msg(">>> BuildRequestDistributor._activityLoop: _getPendingBuilders END")
+    #LLVM_LOCAL end
+
+    #LLVM_LOCAL begin
+    @defer.inlineCallbacks
+    def _activityLoopIter(self, pending_builders):
+        #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter START...")
+        if not self.running:
+            #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter END (not self.running)")
+            return False
+        if not pending_builders:
+            #log.msg(">>> BuildRequestDistributor._activityLoop: _getPendingBuilders...")
+            #yield self.pending_builders_lock.run(self._getPendingBuilders, pending_builders)
+
+            #self._getPendingBuilders(pending_builders)
+            if self._pending_builders:
+                pending_builders.extend(self._pending_builders)
+                self._pending_builders = []
+
+            if not pending_builders:
+                #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter END (not pending_builders)")
+                return False
+
+        bldr_name = pending_builders.pop(0)
+        # get the actual builder object
+        #log.msg(f">>> BuildRequestDistributor._activityLoop: botmaster.builders.get({bldr_name})...")
+        bldr = self.botmaster.builders.get(bldr_name)
+        #log.msg(f">>> BuildRequestDistributor._activityLoop: botmaster.builders.get({bldr_name}) returned {bldr}")
+        if bldr:
+            try:
+                yield self._maybeStartBuildsOnBuilder(bldr)
+            except Exception:
+                log.err(Failure(), f"from maybeStartBuild for builder '{bldr_name}'")
+        #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter END")
+        return True
+    #LLVM_LOCAL end
+
     @defer.inlineCallbacks
     def _activityLoop(self):
         self.active = True
-
+        #log.msg(">>> BuildRequestDistributor._activityLoop: Started...")
         timer = metrics.Timer('BuildRequestDistributor._activityLoop()')
         timer.start()
         pending_builders = []
-        while True:
-            yield self.activity_lock.acquire()
-            if not self.running:
-                self.activity_lock.release()
-                break
-
-            if not pending_builders:
-                # lock pending_builders, pop an element from it, and release
-                yield self.pending_builders_lock.acquire()
-
-                # bail out if we shouldn't keep looping
-                if not self._pending_builders:
-                    self.pending_builders_lock.release()
-                    self.activity_lock.release()
-                    break
-                # take that builder list, and run it until the end
-                # we make a copy of it, as it could be modified meanwhile
-                pending_builders = copy.copy(self._pending_builders)
-                self._pending_builders = []
-                self.pending_builders_lock.release()
-
-            bldr_name = pending_builders.pop(0)
-
-            # get the actual builder object
-            bldr = self.botmaster.builders.get(bldr_name)
-            try:
-                if bldr:
-                    yield self._maybeStartBuildsOnBuilder(bldr)
-            except Exception:
-                log.err(Failure(), f"from maybeStartBuild for builder '{bldr_name}'")
-
-            self.activity_lock.release()
-
+        #LLVM_LOCAL begin
+        while (yield self.activity_lock.run(self._activityLoopIter, pending_builders)):
+            pass
+        #LLVM_LOCAL end
         timer.stop()
-
+        #log.msg(">>> BuildRequestDistributor._activityLoop: Finished.")
         self.active = False
 
     @defer.inlineCallbacks
