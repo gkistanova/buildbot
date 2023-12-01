@@ -739,13 +739,16 @@ class RealTests(Tests):
             got_commits = [c['comments'] for c in got]
             self.assertEqual(sorted(got_commits), sorted(commits))
 
-        yield expect(1, ['2nd commit', '3rd commit', '1st commit'])
-        yield expect(2, ['4th commit'])
-        yield expect(3, ['6th commit'])
-        yield expect(4, [])
-        yield expect(5, ['8th commit', '9th commit', '7th commit'])
-        yield expect(6, ['10th commit'])
-        yield expect(7, ['11th commit'])
+        # LLVM_LOCAL begin
+        # Note BuildRequestDistributor._sortBuilders() is disabled.
+        # yield expect(1, ['2nd commit', '3rd commit', '1st commit'])
+        # yield expect(2, ['4th commit'])
+        # yield expect(3, ['6th commit'])
+        # yield expect(4, [])
+        # yield expect(5, ['8th commit', '9th commit', '7th commit'])
+        # yield expect(6, ['10th commit'])
+        # yield expect(7, ['11th commit'])
+        # LLVM_LOCAL end
 
 
 class TestFakeDB(unittest.TestCase, connector_component.FakeConnectorComponentMixin, Tests):
