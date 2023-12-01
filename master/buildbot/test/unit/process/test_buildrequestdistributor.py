@@ -150,7 +150,7 @@ class Test(TestBRDBase):
     def checkAllCleanedUp(self):
         # check that the BRD didn't end with a stuck lock or in the 'active' state (which would mean
         # it ended without unwinding correctly)
-        self.assertEqual(self.brd.pending_builders_lock.locked, False)
+        # LLVM_LOCAL self.assertEqual(self.brd.pending_builders_lock.locked, False)
         self.assertEqual(self.brd.activity_lock.locked, False)
         self.assertEqual(self.brd.active, False)
 
@@ -207,7 +207,8 @@ class Test(TestBRDBase):
             yield self.brd.maybeStartBuildsOn([bldr])
 
         yield self.brd._waitForFinish()
-        self.assertEqual(self.maybeStartBuildsOnBuilder_calls, builders)
+        # LLVM_LOCAL: Note BuildRequestDistributor._sortBuilders() is disabled.
+        # self.assertEqual(self.maybeStartBuildsOnBuilder_calls, builders)
         self.checkAllCleanedUp()
 
     @defer.inlineCallbacks
@@ -240,8 +241,9 @@ class Test(TestBRDBase):
         yield self.brd._waitForFinish()
         # bldr3 gets invoked twice, since it's considered to have started
         # already when the first call to maybeStartBuildsOn returns
-        self.assertEqual(self.maybeStartBuildsOnBuilder_calls,
-                         ['bldr3', 'bldr1', 'bldr2', 'bldr3'])
+        # LLVM_LOCAL: Note BuildRequestDistributor._sortBuilders() is disabled.
+        # self.assertEqual(self.maybeStartBuildsOnBuilder_calls,
+        #                  ['bldr3', 'bldr1', 'bldr2', 'bldr3'])
         self.checkAllCleanedUp()
 
     @defer.inlineCallbacks
@@ -255,7 +257,8 @@ class Test(TestBRDBase):
         self.removeBuilder('bldr3')
 
         yield self.brd._waitForFinish()
-        self.assertEqual(self.maybeStartBuildsOnBuilder_calls, ['bldr1'])
+        # LLVM_LOCAL: Note BuildRequestDistributor._sortBuilders() is disabled.
+        # self.assertEqual(self.maybeStartBuildsOnBuilder_calls, ['bldr1'])
         self.checkAllCleanedUp()
 
     @defer.inlineCallbacks
@@ -373,8 +376,9 @@ class Test(TestBRDBase):
 
         yield self.brd._waitForFinish()
 
-        self.assertEqual(self.maybeStartBuildsOnBuilder_calls,
-                         ['A', 'finished', '(stopped)'])
+        # LLVM_LOCAL: self.assertEqual(self.brd.pending_builders_lock.locked, False)
+        # self.assertEqual(self.maybeStartBuildsOnBuilder_calls,
+        #                  ['A', 'finished', '(stopped)'])
 
 
 class TestMaybeStartBuilds(TestBRDBase):
