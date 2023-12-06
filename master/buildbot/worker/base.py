@@ -468,6 +468,18 @@ class AbstractWorker(service.BuildbotService):
             # reasonable fallback
             self.path_module = namedModule("posixpath")
         log.msg("bot attached")
+
+        #LLVM_LOCAL begin
+        log.msg(f"  host: {workerinfo['host']}")
+        log.msg(f"  admin: {workerinfo['admin']}")
+        log.msg(f"  access_uri: {workerinfo['access_uri']}")
+        log.msg(f"  version: {workerinfo['version']}")
+        log.msg(f"  system: {self.worker_system}")
+        log.msg(f"  worker_commands: {self.worker_commands}")
+        log.msg(f"  basedir: {self.worker_basedir}")
+        log.msg(f"  environ: {self.worker_environ}")
+        #LLVM_LOCAL end
+
         self.messageReceivedFromWorker()
         self.stopMissingTimer()
         yield self.updateWorker()
