@@ -41,7 +41,7 @@ class BitbucketPullrequestPoller(base.ReconfigurablePollingChangeSource, PullReq
     def __init__(self, owner, slug, **kwargs):
         kwargs['name'] = self.build_name(owner, slug)
 
-        self.initLock = defer.DeferredLock()
+        self.initLock2 = defer.DeferredLock()
 
         super().__init__(owner, slug, **kwargs)
 
@@ -89,7 +89,7 @@ class BitbucketPullrequestPoller(base.ReconfigurablePollingChangeSource, PullReq
         return "BitbucketPullrequestPoller watching the "\
             f"Bitbucket repository {self.owner}/{self.slug}, branch: {self.branch}"
 
-    @deferredLocked('initLock')
+    @deferredLocked('initLock2')
     @defer.inlineCallbacks
     def poll(self):
         response = yield self._getChanges()
