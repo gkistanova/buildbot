@@ -274,3 +274,26 @@ class BuildRequestsConnectorComponent(base.DBConnectorComponent):
                       complete=bool(row.complete), results=row.results,
                       submitted_at=submitted_at, complete_at=complete_at,
                       waited_for=bool(row.waited_for))
+
+    #LLVM_LOCAL begin
+    @defer.inlineCallbacks
+    def setBuildRequestsSubmittedAt(self, brids, submitted_at):
+        # assert isinstance(submitted_at, datetime), "submitted_at must be datetime!"
+        submitted_at = datetime2epoch(submitted_at)
+        def thd(conn):
+            transaction = conn.begin()
+            reqs_tbl = self.db.model.buildrequests
+            for batch in self.doBatch(brids, 100):
+                q = reqs_tbl.update()
+                q = q.where(reqs_tbl.c.id.in_(batch))
+                res = conn.execute(q, submitted_at=submitted_at)
+
+                # if an incorrect number of rows were updated, then we failed.
+                if res.rowcount != len(batch):
+                    log.msg(f"tried to update submitted_at {len(batch)} buildrequests, "
+                            f"but only updated {res.rowcount}")
+                    transaction.rollback()
+                    raise NotClaimedError
+            transaction.commit()
+        yield self.db.pool.do(thd)
+    #LLVM_LOCAL end
