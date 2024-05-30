@@ -294,6 +294,9 @@ class BuildRequestDistributor(service.AsyncMultiService):
         # sorted list of names of builders that need their maybeStartBuild
         # method invoked.
         self._pending_builders = []
+        #LLVM_LOCAL Store the oldest build request time to sort _pending_builders directly.
+        self._pending_builders_submitted_at = {}
+
         self.activity_lock = defer.DeferredLock()
         self.active = False
 
@@ -352,11 +355,32 @@ class BuildRequestDistributor(service.AsyncMultiService):
             return None
 
         #LLVM_LOCAL begin
+        #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn: getOldestRequestTime(new_builders={new_builders})")
+        builders_dict = self.botmaster.builders
+        for builder_name in new_builders:
+            time = None
+            builder = builders_dict.get(builder_name)
+            if builder:
+                time = yield builder.getOldestRequestTime()
+            if time is None:
+                # for builders that do not have pending buildrequest, we just use large number
+                time = math.inf
+            elif isinstance(time, datetime):
+                time = time.timestamp()
+            elif not isinstance(time, int): # Mock
+                time = math.inf
+            self._pending_builders_submitted_at[builder_name] = time
+
         try:
+            #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn: Update & sort _pending_builders")
+            # Replace
             #yield self.pending_builders_lock.run(self._resetPendingBuildersList, new_builders)
-            # Don't call _sortBuilders() and set _pending_builders directly.
-            self._pending_builders = list(existing_pending | new_builders)
-            yield
+            # with the following code.
+
+            # Don't use existing_pending because _pending_builders could be changed during yield getOldestRequestTime().
+            self._pending_builders = list(set(self._pending_builders) | new_builders)
+            # Sort _pending_builders directly w/o any yield. It is safe.
+            self._pending_builders.sort(key=lambda bn: self._pending_builders_submitted_at[bn])
 
             # start the activity loop, if we aren't already
             # working on that.
@@ -365,6 +389,8 @@ class BuildRequestDistributor(service.AsyncMultiService):
                 self._activity_loop_deferred = self._activityLoop()
         except Exception:  # pragma: no cover
             log.err(Failure(), f"while attempting to start builds on {self.name}")
+
+        yield # We need at least 1 yield per function, but after call self._activityLoop()
 
         #LLVM_LOCAL end
         return None
@@ -433,6 +459,7 @@ class BuildRequestDistributor(service.AsyncMultiService):
     #    if self._pending_builders:
     #        pending_builders.extend(self._pending_builders)
     #        self._pending_builders = []
+    #        self._pending_builders_submitted_at = {}
     #    #log.msg(">>> BuildRequestDistributor._activityLoop: _getPendingBuilders END")
     #LLVM_LOCAL end
 
@@ -451,6 +478,7 @@ class BuildRequestDistributor(service.AsyncMultiService):
             if self._pending_builders:
                 pending_builders.extend(self._pending_builders)
                 self._pending_builders = []
+                self._pending_builders_submitted_at = {}
 
             if not pending_builders:
                 #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter END (not pending_builders)")
