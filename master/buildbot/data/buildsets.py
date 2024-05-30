@@ -154,7 +154,15 @@ class Buildset(base.ResourceType):
             parent_buildid=parent_buildid, parent_relationship=parent_relationship,
             priority=priority)
 
-        yield BuildRequestCollapser(self.master, list(brids.values())).collapse()
+        #LLVM_LOCAL begin
+        log.msg(f"Collapse(brids={brids})...")
+        earliest_submitted_at, _ = yield BuildRequestCollapser(self.master, list(brids.values())).collapse()
+        if earliest_submitted_at:
+            log.msg(f"Collapse success: Update submitted_at {epoch2datetime(submitted_at)} to {earliest_submitted_at}")
+            yield self.master.db.buildrequests.setBuildRequestsSubmittedAt(list(brids.values()), earliest_submitted_at)
+        else:
+            log.msg("Collapse none")
+        #LLVM_LOCAL end
 
         # get each of the sourcestamps for this buildset (sequentially)
         bsdict = yield self.master.db.buildsets.getBuildset(bsid)

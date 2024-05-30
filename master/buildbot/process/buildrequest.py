@@ -58,6 +58,10 @@ class BuildRequestCollapser:
     def collapse(self):
         brids_to_collapse = set()
 
+        #LLVM_LOCAL
+        submitted_at = {}
+        earliest_submitted_at = None
+
         for brid in self.brids:
             # Get the BuildRequest object
             br = yield self.master.data.get(('buildrequests', brid))
@@ -80,7 +84,10 @@ class BuildRequestCollapser:
 
                 canCollapse = yield collapseRequestsFn(self.master, bldr, br, unclaim_br)
                 if canCollapse is True:
-                    brids_to_collapse.add(unclaim_br['buildrequestid'])
+                    brid_to_collapse = unclaim_br['buildrequestid']
+                    brids_to_collapse.add(brid_to_collapse)
+                    #LLVM_LOCAL
+                    submitted_at[brid_to_collapse] = unclaim_br['submitted_at']
 
         collapsed_brids = []
         for brid in brids_to_collapse:
@@ -88,8 +95,12 @@ class BuildRequestCollapser:
             if claimed:
                 yield self.master.data.updates.completeBuildRequests([brid], SKIPPED)
                 collapsed_brids.append(brid)
+                #LLVM_LOCAL
+                if earliest_submitted_at is None or submitted_at[brid] < earliest_submitted_at:
+                    earliest_submitted_at = submitted_at[brid]
 
-        return collapsed_brids
+        #LLVM_LOCAL
+        return earliest_submitted_at, collapsed_brids
 
 
 class TempSourceStamp:
