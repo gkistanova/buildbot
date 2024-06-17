@@ -357,6 +357,7 @@ class BuildRequestDistributor(service.AsyncMultiService):
         #LLVM_LOCAL begin
         #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn: getOldestRequestTime(new_builders={new_builders})")
         builders_dict = self.botmaster.builders
+        new_builders_submitted_at = {}
         for builder_name in new_builders:
             time = None
             builder = builders_dict.get(builder_name)
@@ -369,7 +370,7 @@ class BuildRequestDistributor(service.AsyncMultiService):
                 time = time.timestamp()
             elif not isinstance(time, int): # Mock
                 time = math.inf
-            self._pending_builders_submitted_at[builder_name] = time
+            new_builders_submitted_at[builder_name] = time
 
         try:
             #log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOn: Update & sort _pending_builders")
@@ -377,8 +378,10 @@ class BuildRequestDistributor(service.AsyncMultiService):
             #yield self.pending_builders_lock.run(self._resetPendingBuildersList, new_builders)
             # with the following code.
 
-            # Don't use existing_pending because _pending_builders could be changed during yield getOldestRequestTime().
+            # Don't use existing_pending.
+            # _pending_builders and _pending_builders_submitted_at could be cleared during yield getOldestRequestTime().
             self._pending_builders = list(set(self._pending_builders) | new_builders)
+            self._pending_builders_submitted_at.update(new_builders_submitted_at)
             # Sort _pending_builders directly w/o any yield. It is safe.
             self._pending_builders.sort(key=lambda bn: self._pending_builders_submitted_at[bn])
 
@@ -459,7 +462,6 @@ class BuildRequestDistributor(service.AsyncMultiService):
     #    if self._pending_builders:
     #        pending_builders.extend(self._pending_builders)
     #        self._pending_builders = []
-    #        self._pending_builders_submitted_at = {}
     #    #log.msg(">>> BuildRequestDistributor._activityLoop: _getPendingBuilders END")
     #LLVM_LOCAL end
 
