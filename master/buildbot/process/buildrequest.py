@@ -58,10 +58,6 @@ class BuildRequestCollapser:
     def collapse(self):
         brids_to_collapse = set()
 
-        #LLVM_LOCAL
-        submitted_at = {}
-        earliest_submitted_at = None
-
         for brid in self.brids:
             # Get the BuildRequest object
             br = yield self.master.data.get(('buildrequests', brid))
@@ -73,6 +69,10 @@ class BuildRequestCollapser:
             # Get the Collapse BuildRequest function (from the configuration)
             collapseRequestsFn = bldr.getCollapseRequestsFn() if bldr else None
             unclaim_brs = yield self._getUnclaimedBrs(builderid)
+            # LLVM_LOCAL
+            # Get only the latest unclaimed build request for that builder.
+            if unclaim_brs:
+                unclaim_brs = [unclaim_brs[-1]]
 
             # short circuit if there is no merging to do
             if not collapseRequestsFn or not unclaim_brs:
@@ -84,10 +84,17 @@ class BuildRequestCollapser:
 
                 canCollapse = yield collapseRequestsFn(self.master, bldr, br, unclaim_br)
                 if canCollapse is True:
-                    brid_to_collapse = unclaim_br['buildrequestid']
-                    brids_to_collapse.add(brid_to_collapse)
-                    #LLVM_LOCAL
-                    submitted_at[brid_to_collapse] = unclaim_br['submitted_at']
+                    brids_to_collapse.add(unclaim_br['buildrequestid'])
+                    # LLVM_LOCAL
+                    collapsed_submitted_at = unclaim_br['submitted_at']
+                    if collapsed_submitted_at < br['submitted_at']:
+                        log.msg(
+                            f"Collapse buildrequest {unclaim_br['buildrequestid']}. "
+                            f"Update buildrequest {br['buildrequestid']} submitted_at to {collapsed_submitted_at}"
+                        )
+                        yield self.master.db.buildrequests.setBuildRequestsSubmittedAt(
+                            [br["buildrequestid"]], collapsed_submitted_at
+                        )
 
         collapsed_brids = []
         for brid in brids_to_collapse:
@@ -95,12 +102,8 @@ class BuildRequestCollapser:
             if claimed:
                 yield self.master.data.updates.completeBuildRequests([brid], SKIPPED)
                 collapsed_brids.append(brid)
-                #LLVM_LOCAL
-                if earliest_submitted_at is None or submitted_at[brid] < earliest_submitted_at:
-                    earliest_submitted_at = submitted_at[brid]
 
-        #LLVM_LOCAL
-        return earliest_submitted_at, collapsed_brids
+        return collapsed_brids
 
 
 class TempSourceStamp:
