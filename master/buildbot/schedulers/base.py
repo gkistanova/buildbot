@@ -445,7 +445,13 @@ class BaseScheduler(ClusteredBuildbotService, StateMixin):
         builderids = []
         for bldr in (yield self.master.data.get(('builders', ))):
             if bldr['name'] in builderNames:
-                builderids.append(bldr['builderid'])
+                #LLVM_LOCAL
+                bldr_obj = self.master.botmaster.builders.get(bldr['name'])
+                # Check the attribute to make tests with mock Builder happy.
+                if not hasattr(bldr_obj.__class__, "workersAvailable") or bldr_obj.workersAvailable():
+                    builderids.append(bldr['builderid'])
+                else:
+                    log.msg(f">>> addBuildsetForSourceStamps: Ignore builder {bldr['name']} because of offline workers.")
 
         # translate properties object into a dict as required by the
         # addBuildset method
