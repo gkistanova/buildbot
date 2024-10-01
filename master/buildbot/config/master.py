@@ -135,6 +135,10 @@ class MasterConfig(util.ComparableMixin):
         self.titleURL = 'http://buildbot.net'
         self.buildbotURL = 'http://localhost:8080/'
         self.changeHorizon = None
+
+        #LLVM_LOCAL
+        self.ignoreOfflineWorkersTimeout = None
+
         self.logCompressionLimit = 4 * 1024
         self.logCompressionMethod = 'gz'
         self.logEncoding = 'utf-8'
@@ -192,6 +196,7 @@ class MasterConfig(util.ComparableMixin):
         "changeHorizon",
         'db',
         "db_url",
+        "ignoreOfflineWorkersTimeout", #LLVM_LOCAL
         "logCompressionLimit",
         "logCompressionMethod",
         "logEncoding",
@@ -351,6 +356,9 @@ class MasterConfig(util.ComparableMixin):
 
         copy_int_param('changeHorizon')
         copy_int_param('logCompressionLimit')
+
+        #LLVM_LOCAL
+        copy_int_param('ignoreOfflineWorkersTimeout')
 
         self.logCompressionMethod = config_dict.get(
             'logCompressionMethod', 'gz')

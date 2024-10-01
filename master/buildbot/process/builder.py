@@ -21,6 +21,7 @@ from twisted.internet import defer
 from twisted.python import log
 
 from buildbot import interfaces
+from buildbot import util
 from buildbot.data import resultspec
 from buildbot.interfaces import IRenderable
 from buildbot.process import buildrequest
@@ -80,6 +81,12 @@ class Builder(util_service.ReconfigurableServiceMixin,
         # Tracks config version for locks
         self.config_version = None
 
+        #LLVM_LOCAL
+        # Do not ignore offline builders within the timeout after reboot.
+        # Use self._last_detached_time=0 to ignore all builders after reboot till attach the first worker.
+        self._last_detached_time = util.now()
+        self._ignore_offline_workers_timeout = None
+
     def _find_builder_config_by_name(self, new_config):
         for builder_config in new_config.builders:
             if builder_config.name == self.name:
@@ -127,6 +134,16 @@ class Builder(util_service.ReconfigurableServiceMixin,
         new_workernames = set(builder_config.workernames)
         self.workers = [w for w in self.workers
                         if w.worker.workername in new_workernames]
+
+        #LLVM_LOCAL
+        # Note ignoreOfflineWorkersTimeout=0 means do not use timeout.
+        self._ignore_offline_workers_timeout = (
+            new_config.ignoreOfflineWorkersTimeout * 60
+            if new_config.ignoreOfflineWorkersTimeout
+            else None
+        )
+        if new_config.ignoreOfflineWorkersTimeout is None:
+            log.msg("WARNING: 'ignoreOfflineWorkersTimeout' is missing in master.cfg")
 
     def _has_updated_config_info(self, old_config, new_config):
         if old_config is None:
@@ -300,6 +317,21 @@ class Builder(util_service.ReconfigurableServiceMixin,
 
         # inform the WorkerForBuilder that their worker went away
         wfb.detached()
+
+        #LLVM_LOCAL
+        self._last_detached_time = util.now()
+
+    #LLVM_LOCAL_BEGIN
+    def workersAvailable(self):
+        if (
+            self.workers
+            or self._ignore_offline_workers_timeout is None
+            or self._last_detached_time is None
+        ):
+            return True
+        offline_workers_duration = util.now() - self._last_detached_time
+        return offline_workers_duration < self._ignore_offline_workers_timeout
+    #LLVM_LOCAL_END
 
     def getAvailableWorkers(self):
         return [wfb for wfb in self.workers if wfb.isAvailable()]
