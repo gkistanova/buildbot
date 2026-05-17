@@ -105,7 +105,8 @@ class BuildStatusGeneratorMixin(util.ComparableMixin):
             return False
         return True
 
-    def is_message_needed_by_results(self, build):
+    # LLVM_LOCAL begin
+    def _is_message_needed_by_results(self, build):
         results = build['results']
         if "change" in self.mode:
             prev = build['prev_build']
@@ -117,7 +118,7 @@ class BuildStatusGeneratorMixin(util.ComparableMixin):
             return True
         if "problem" in self.mode and results == FAILURE:
             prev = build['prev_build']
-            if prev and prev['results'] != FAILURE:
+            if prev and prev['results'] in [SUCCESS, WARNINGS]:  # != FAILURE:
                 return True
         if "warnings" in self.mode and results == WARNINGS:
             return True
@@ -127,6 +128,14 @@ class BuildStatusGeneratorMixin(util.ComparableMixin):
             return True
 
         return False
+
+    def is_message_needed_by_results(self, build):
+        message_needed = self._is_message_needed_by_results(build)
+        if message_needed:
+            prev = build['prev_build']
+            log.msg(f">>>> {self}: is_message_needed_by_results({build}) is True, mode={self.mode}, results={build['results']}, prev_results={prev['results'] if prev else None}")
+        return message_needed
+    # LLVM_LOCAL end
 
     def _merge_msgtype(self, msgtype, new_msgtype):
         if new_msgtype is None:
