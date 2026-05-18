@@ -20,7 +20,7 @@ from twisted.python import log
 
 from buildbot.data import resultspec
 from buildbot.process.properties import renderer
-from buildbot.process.results import RETRY, SKIPPED, CANCELLED # LLVM_LOCAL
+from buildbot.process.results import RETRY
 from buildbot.util import flatten
 
 
@@ -33,27 +33,8 @@ def getPreviousBuild(master, build):
     while n >= 0:
         prev = yield master.data.get(("builders", build['builderid'], "builds", n))
 
-        # LLVM_LOCAL begin
-        if prev:
-            # Probably we just need to specify schedulers for each MailNotifier!
-
-            # ForceSchedulers starts with "force-...".
-            # getReleaseBranchSchedulers() creates schedulers like "release:...".
-            # getMainBranchSchedulers() creates schedulers like
-            # "main:clang,clang-tools-extra,compiler-rt,libcxx,libcxxabi,libunwind,lld,llvm,mlir".
-            prev_scheduler = prev['properties'].get('scheduler', ["(unknown)"])[0]
-
-            # We can also use the reason:
-            # prev_reason = prev['properties'].get('reason', ["(unknown)"])[0]
-            if (
-            	# Look at builds requested only by schedulers created with getMainBranchSchedulers().
-            	# Or we can search the same scheduler for the prev build.
-                prev_scheduler.startswith("main:") and
-                # not prev_reason.startswith("A build was forced by") and
-                prev['results'] not in [RETRY, SKIPPED, CANCELLED] # != RETRY
-            ):  
-                return prev
-        # LLVM_LOCAL end
+        if prev and prev['results'] != RETRY:
+            return prev
         n -= 1
     return None
 
