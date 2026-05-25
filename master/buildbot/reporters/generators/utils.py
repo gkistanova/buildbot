@@ -109,7 +109,7 @@ class BuildStatusGeneratorMixin(util.ComparableMixin):
     def _is_message_needed_by_results(self, build):
         results = build['results']
         if "change" in self.mode:
-            prev = build['prev_build']
+            prev = build.get('prev_build')
             if prev and prev['results'] != results:
                 return True
         if "failing" in self.mode and results == FAILURE:
@@ -117,7 +117,8 @@ class BuildStatusGeneratorMixin(util.ComparableMixin):
         if "passing" in self.mode and results == SUCCESS:
             return True
         if "problem" in self.mode and results == FAILURE:
-            prev = build['prev_build']
+            prev = build.get('prev_build')
+            # prev is None if the previous build is incomplete yet
             if prev and prev['results'] in [SUCCESS, WARNINGS]:  # != FAILURE:
                 return True
         if "warnings" in self.mode and results == WARNINGS:
