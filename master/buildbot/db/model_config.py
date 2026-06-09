@@ -15,5 +15,5 @@
 
 property_name_length = 256
 property_source_length = 256
-step_name_length = 50
+step_name_length = 255 # LLVM_LOCAL
 hash_length = 40

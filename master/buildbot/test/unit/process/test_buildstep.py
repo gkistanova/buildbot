@@ -137,7 +137,7 @@ class TestBuildStep(
 
     def test_name_too_long(self):
         with self.assertRaisesConfigError("exceeds maximum length of"):
-            buildstep.BuildStep(name="b" * 100)
+            buildstep.BuildStep(name="b" * 1000) # LLVM_LOCAL
 
     def test_unexpectedKeywordArgument(self):
         """
