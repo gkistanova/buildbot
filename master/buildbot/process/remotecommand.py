@@ -231,12 +231,7 @@ class RemoteCommand(base.RemoteCommandImpl):
         @type  updates: list of [object, int]
         @param updates: list of updates from the remote command
         """
-        # LLVM_LOCAL begin
-        # Dial with untrusted strings here. We could get strings
-        # broken by any possible way, so preserve as much
-        # as possible and do not fail decoding.
-        updates = decode(updates, 'replace')
-        # LLVM_LOCAL end
+        updates = decode(updates)
         self.worker.messageReceivedFromWorker()
         max_updatenum = 0
         for (update, num) in updates:  # noqa pylint: disable=too-many-nested-blocks
