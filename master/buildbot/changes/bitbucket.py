@@ -57,7 +57,7 @@ class BitbucketPullrequestPoller(base.ReconfigurablePollingChangeSource, PullReq
     def __init__(self, owner: str, slug: str, **kwargs: Any):
         kwargs['name'] = self.build_name(owner, slug)
 
-        self.initLock = defer.DeferredLock()
+        self.initLock2 = defer.DeferredLock() #LLVM_LOCAL
 
         super().__init__(owner, slug, **kwargs)
 
@@ -131,7 +131,7 @@ class BitbucketPullrequestPoller(base.ReconfigurablePollingChangeSource, PullReq
         )
 
     # mypy: disable-error-code="override"
-    @deferredLocked('initLock')
+    @deferredLocked('initLock2') #LLVM_LOCAL
     @defer.inlineCallbacks
     def poll(self) -> InlineCallbacksType[None]:  # type: ignore[override]
         response = yield self._getChanges()
