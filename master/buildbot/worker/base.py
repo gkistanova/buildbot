@@ -486,7 +486,19 @@ class AbstractWorker(service.BuildbotService):
             self.path_module = namedModule("posixpath")
             self.path_cls = PurePosixPath
 
-        log.msg("bot attached")
+        #LLVM_LOCAL_BEGIN
+        bot_info = (
+            f"  host: {workerinfo['host']}\n"
+            f"  admin: {workerinfo['admin']}\n"
+            f"  access_uri: {workerinfo['access_uri']}\n"
+            f"  version: {workerinfo['version']}\n"
+            f"  system: {self.worker_system}\n"
+            f"  worker_commands: {self.worker_commands}\n"
+            f"  basedir: {self.worker_basedir}\n"
+            f"  environ: {self.worker_environ}"
+        )
+        log.msg(f"bot attached\n{bot_info}")
+        #LLVM_LOCAL_END
         self.messageReceivedFromWorker()
         self.stopMissingTimer()
         yield self.updateWorker()
