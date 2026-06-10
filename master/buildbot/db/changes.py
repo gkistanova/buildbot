@@ -98,7 +98,8 @@ class ChangesConnectorComponent(base.DBConnectorComponent):
                 .where(
                     changes_tbl.c.branch == branch,
                     changes_tbl.c.repository == repository,
-                    changes_tbl.c.project == project,
+                    # LLVM_LOCAL: We do not filter by projects.
+                    # changes_tbl.c.project == project,
                     changes_tbl.c.codebase == codebase,
                 )
                 .order_by(
@@ -251,6 +252,8 @@ class ChangesConnectorComponent(base.DBConnectorComponent):
     def getChangesForBuild(self, buildid: int):
         assert buildid > 0
 
+        #LLVM_LOCAL_BEGIN
+        """
         gssfb = self.master.db.sourcestamps.getSourceStampsForBuild
         changes: list[ChangeModel] = []
         currentBuild = yield self.master.db.builds.getBuild(buildid)
@@ -291,6 +294,49 @@ class ChangesConnectorComponent(base.DBConnectorComponent):
                 changes.append(change)
 
         return changes
+        """
+        # Get a list of changes for this particular build, as
+        # all the changes from this build with all the changes
+        # from all the skipped builds since the previous
+        # completed build.
+        # TODO: Make this more SqlAlchemy way.
+        def thd(conn):
+            q = sa.sql.text(
+                "WITH this AS ( " \
+                    "SELECT buildrequestid AS brqid, builds.builderid AS bldrid FROM builds, buildrequests " \
+                    "WHERE builds.buildrequestid = buildrequests.id AND builds.id = :buildid " \
+                    "LIMIT 1 " \
+                ") " \
+                "SELECT changes.* " \
+                "FROM " \
+                    "changes " \
+                    "INNER JOIN buildset_sourcestamps AS bs_sst USING(sourcestampid) " \
+                    "INNER JOIN ( " \
+                        "SELECT DISTINCT buildsetid " \
+                        "FROM buildrequests, this " \
+                        "WHERE " \
+                            "builderid = this.bldrid AND " \
+                            "buildrequests.id <= this.brqid AND " \
+                            "buildrequests.id > ( " \
+                                "SELECT id " \
+                                "FROM buildrequests, this " \
+                                "WHERE " \
+                                    "builderid = this.bldrid AND " \
+                                    "buildrequests.id < this.brqid AND " \
+                                    "results <> 3 " \
+                                "ORDER BY id DESC LIMIT 1 " \
+                            ") " \
+                    ") AS bs USING (buildsetid) " \
+                "ORDER BY id DESC;"
+            )
+
+            rows = conn.execute(q, buildid=buildid)
+            changes = [
+                self._chdict_from_change_row_thd(conn, r)
+                for r in rows.fetchall()]
+            return changes
+        return (yield self.db.pool.do(thd))
+        #LLVM_LOCAL_END
 
     def getChangeFromSSid(self, sourcestampid: int) -> defer.Deferred[ChangeModel | None]:
         assert sourcestampid >= 0
