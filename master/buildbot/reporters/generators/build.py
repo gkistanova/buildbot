@@ -15,7 +15,6 @@
 
 from twisted.internet import defer
 from zope.interface import implementer
-from twisted.python import log # LLVM_LOCAL
 
 from buildbot import interfaces
 from buildbot.reporters import utils
@@ -73,11 +72,6 @@ class BuildStatusGenerator(BuildStatusGeneratorMixin):
             return None
         if not is_new and not self.is_message_needed_by_results(build):
             return None
-
-        # LLVM_LOCAL begin
-        if is_new:
-            log.msg(f">>>> {self}: is_message_needed_by_results() ignored because is_new=True, key={key}")
-        # LLVM_LOCAL end
 
         report = yield self.build_message(self.formatter, master, reporter, build)
         return report
