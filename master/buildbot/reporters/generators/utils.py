@@ -116,8 +116,9 @@ class BuildStatusGeneratorMixin(util.ComparableMixin):
         if "passing" in self.mode and results == SUCCESS:
             return True
         if "problem" in self.mode and results == FAILURE:
-            prev = build.get('prev_build', None) # LLVM_LOCAL
-            if prev and prev['results'] != FAILURE:
+            prev = build.get('prev_build')
+            # prev is None if the previous build is incomplete yet
+            if prev and prev['results'] in [SUCCESS, WARNINGS]:  # != FAILURE:
                 return True
         if "warnings" in self.mode and results == WARNINGS:
             return True
