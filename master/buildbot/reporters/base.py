@@ -133,6 +133,11 @@ class ReporterBase(service.BuildbotService):
                         scheduler_filter="main:",
                     )
                 )
+                if (
+                    next_build_id is not None
+                    and next_build_results is not None
+                ):
+                    log.msg(f'>>> builderid={msg["builderid"]}, build={msg["number"]}: Next build id {next_build_id} is already completed, results {next_build_results}.')
                 # Process reports for the mode change or problem.
                 if (
                     next_build_id is not None
