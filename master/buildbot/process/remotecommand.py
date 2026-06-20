@@ -78,8 +78,19 @@ class RemoteCommand(base.RemoteCommandImpl):
         self.loglock = defer.DeferredLock()
         self._line_boundary_finders = {}
 
+        self._update_logger_ns()
+
+    def _update_logger_ns(self) -> None:
+        parts: list[str] = []
+        if self.conn is not None:
+            parts.append(self.conn.get_peer())
+        if self.worker is not None and self.worker.workername:
+            parts.append(self.worker.workername)
+        parts.append(str(id(self)))
+        self._logger_namespace = f"RemoteCommand<{','.join(parts)}>"
+
     def __repr__(self):
-        return f"<RemoteCommand '{self.remote_command}' at {id(self)}>"
+        return f"{self._logger_namespace}::<RemoteCommand '{self.remote_command}'>"
 
     @classmethod
     def generate_new_command_id(cls):
@@ -96,6 +107,8 @@ class RemoteCommand(base.RemoteCommandImpl):
         self.active = True
         self.step = step
         self.conn = conn
+        self._update_logger_ns()
+
         self.builder_name = builder_name
 
         # This probably could be solved in a cleaner way.
@@ -172,13 +185,14 @@ class RemoteCommand(base.RemoteCommandImpl):
 
     @defer.inlineCallbacks
     def interrupt(self, why):
-        log.msg("RemoteCommand.interrupt", self, why)
+        log.msg(f"{self}: RemoteCommand.interrupt", self, why)
 
         if self.conn and isinstance(why, Failure) and why.check(error.ConnectionLost):
             # Note that we may be in the process of interruption and waiting for the worker to
             # return the final results when the connection is disconnected.
-            log.msg("RemoteCommand.interrupt: lost worker")
+            log.msg(f"{self}: RemoteCommand.interrupt: lost worker")
             self.conn = None
+            self._update_logger_ns()
             self._finished(why)
             return
         if not self.active or self.interrupted:
@@ -197,7 +211,7 @@ class RemoteCommand(base.RemoteCommandImpl):
                                                    self.commandID, str(why))
             # the worker may not have remote_interruptCommand
         except Exception as e:
-            log.msg("RemoteCommand.interrupt failed", self, e)
+            log.msg(f"{self}: RemoteCommand.interrupt failed", self, e)
 
     def remote_update_msgpack(self, updates):
         self.worker.messageReceivedFromWorker()
@@ -508,4 +522,4 @@ class RemoteShellCommand(RemoteCommand):
         return super()._start()
 
     def __repr__(self):
-        return f"<RemoteShellCommand '{repr(self.fake_command)}'>"
+        return f"{self._logger_namespace}::<RemoteShellCommand '{repr(self.fake_command)}'>"
