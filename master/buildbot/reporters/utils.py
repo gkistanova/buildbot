@@ -31,6 +31,8 @@ def getPreviousBuild(master, build):
         builderid, build["number"], "main:"
     )
     # If results is None it means that the previous build is incomplete yet.
+    if prev_build_number is not None and prev_build_results is None:
+        log.msg(f'>>> builderid={builderid}, build={build["number"]}: Prev build {prev_build_number} is incomplete yet. Postpone change/problem reports.')
     if prev_build_number is not None and prev_build_results is not None:
         prev_build = yield master.data.get(("builders", builderid, "builds", prev_build_number))
         return prev_build
