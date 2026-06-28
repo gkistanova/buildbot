@@ -92,7 +92,7 @@ class BuildRequestCollapser:
 
             for unclaim_br in unclaim_brs:
                 if unclaim_br['buildrequestid'] == br['buildrequestid']:
-                    log.msg(">>>> collapse: Do not collapse to itself. Continue enumerating brids.")
+                    log.msg(f">>>> collapse: Do not collapse brid={br['buildrequestid']} to itself. Continue enumerating brids.")
                     continue
 
                 canCollapse = yield collapseRequestsFn(self.master, bldr, br, unclaim_br)
