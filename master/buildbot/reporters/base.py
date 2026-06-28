@@ -108,8 +108,15 @@ class ReporterBase(service.BuildbotService):
 
         try:
             reports = []
+            #LLVM_LOCAL_BEGIN
+            generators_want_previous_build = []
             for g in self.generators:
                 if self._does_generator_want_key(g, key):
+                    if (
+                        hasattr(g.__class__, "_want_previous_build")
+                        and g._want_previous_build()
+                    ):
+                        generators_want_previous_build.append(g)
                     try:
                         report = yield g.generate(self.master, self, key, msg)
                         if report is not None:
@@ -118,9 +125,9 @@ class ReporterBase(service.BuildbotService):
                         log.err(e, "Got exception when handling reporter events: "
                                 f"key: {key} generator: {g}")
 
-            #LLVM_LOCAL_BEGIN
             if (
-                tuplematch.matchTuple(key, ("builds", None, "finished"))
+                generators_want_previous_build
+                and tuplematch.matchTuple(key, ("builds", None, "finished"))
                 and msg.get("builderid") is not None
                 and msg.get("number") is not None
                 and msg.get("results") is not None
@@ -137,25 +144,16 @@ class ReporterBase(service.BuildbotService):
                     next_build_id is not None
                     and next_build_results is not None
                 ):
-                    log.msg(f'>>> builderid={msg["builderid"]}, build={msg["number"]}: Next build id {next_build_id} is already completed, results {next_build_results}.')
-                # Process reports for the mode change or problem.
-                if (
-                    next_build_id is not None
-                    and next_build_results is not None
-                    and (
+                    log.msg(f'>>> {self.name}: builderid={msg["builderid"]}, build={msg["number"]}: Next build id {next_build_id} is already completed, results {next_build_results}.')
+                    # Process reports for the mode change or problem.
+                    if (
                         next_build_results != msg["results"]
                         or next_build_results == FAILURE
-                    )
-                ):
-                    next_build = yield self.master.data.get(
-                        ("builds", str(next_build_id))
-                    )
-                    for g in self.generators:
-                        if (
-                            self._does_generator_want_key(g, key)
-                            and hasattr(g.__class__, "_want_previous_build")
-                            and g._want_previous_build()
-                        ):
+                    ):
+                        next_build = yield self.master.data.get(
+                            ("builds", str(next_build_id))
+                        )
+                        for g in generators_want_previous_build:
                             try:
                                 report = yield g.generate(
                                     self.master, self, key, next_build

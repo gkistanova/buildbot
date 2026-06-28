@@ -30,6 +30,7 @@ def getPreviousBuild(master, build):
     prev_build_number, prev_build_results = yield master.db.builds.getPrevBuild(
         builderid, build["number"], "main:"
     )
+    log.msg(f'>>> builderid={builderid}, build={build["number"]}: prev_build_number={prev_build_number}, prev_build_results={prev_build_results}.')
     # If results is None it means that the previous build is incomplete yet.
     if prev_build_number is not None and prev_build_results is None:
         log.msg(f'>>> builderid={builderid}, build={build["number"]}: Prev build {prev_build_number} is incomplete yet. Postpone change/problem reports.')
@@ -110,27 +111,52 @@ def get_details_for_buildrequest(master, buildrequest, build):
 @defer.inlineCallbacks
 def getDetailsForBuilds(master, buildset, builds, want_properties=False, want_steps=False,
                         want_previous_build=False, want_logs=False, want_logs_content=False):
+    #LLVM_LOCAL_BEGIN
+    # The master buildbot may have a lot of reporters.
+    # Each reporter's generator calls getDetailsForBuilds().
+    # Request only the missing data.
 
-    builderids = {build['builderid'] for build in builds}
+    # Collect builds where the builder is missing.
+    _builds = []
+    for build in builds:
+        if not build.get('builder'):
+            _builds.append(build)
 
-    builders = yield defer.gatherResults([master.data.get(("builders", _id))
-                                          for _id in builderids])
-
-    buildersbyid = {builder['builderid']: builder
-                    for builder in builders}
+    if _builds:
+        # Request missing builders.
+        builders = yield defer.gatherResults([master.data.get(("builders", build['builderid']))
+                                              for build in _builds])
+        buildersbyid = {builder['builderid']: builder
+                        for builder in builders}
+        for build in _builds:
+            build['builder'] = buildersbyid[build['builderid']]
 
     if want_properties:
-        buildproperties = yield defer.gatherResults(
-            [master.data.get(("builds", build['buildid'], 'properties'))
-             for build in builds])
-    else:  # we still need a list for the big zip
-        buildproperties = list(range(len(builds)))
+        # Collect builds where properties are missing.
+        _builds = []
+        for build in builds:
+            if not build.get('properties'):
+                _builds.append(build)
+        if _builds:
+            # Request missing properties.
+            buildproperties = yield defer.gatherResults(
+                [master.data.get(("builds", build['buildid'], 'properties'))
+                 for build in _builds])
+            for build, properties in zip(_builds, buildproperties):
+                build['properties'] = properties
 
     if want_previous_build:
-        prev_builds = yield defer.gatherResults(
-            [getPreviousBuild(master, build) for build in builds])
-    else:  # we still need a list for the big zip
-        prev_builds = list(range(len(builds)))
+        # Collect builds where the prev build is missing.
+        _builds = []
+        for build in builds:
+            if not build.get('prev_build'):
+                _builds.append(build)
+        if _builds:
+            # Request missing prev_build.
+            prev_builds = yield defer.gatherResults(
+                [getPreviousBuild(master, build) for build in _builds])
+            for build, prev_build in zip(_builds, prev_builds):
+                build['prev_build'] = prev_build
 
     if want_logs_content:
         want_logs = True
@@ -138,38 +164,42 @@ def getDetailsForBuilds(master, buildset, builds, want_properties=False, want_st
         want_steps = True
 
     if want_steps:  # pylint: disable=too-many-nested-blocks
-        buildsteps = yield defer.gatherResults(
-            [master.data.get(("builds", build['buildid'], 'steps'))
-             for build in builds])
+        # Collect builds where steps are missing.
+        _builds = []
+        for build in builds:
+            if not build.get('steps'):
+                _builds.append(build)
+        if _builds:
+            # Request missing steps.
+            buildsteps = yield defer.gatherResults(
+                [master.data.get(("builds", build['buildid'], 'steps'))
+                 for build in _builds])
+            for build, steps in zip(_builds, buildsteps):
+                build['steps'] = list(steps)
+
         if want_logs:
-            for build, build_steps in zip(builds, buildsteps):
-                for s in build_steps:
+            for build in builds:
+                for s in build['steps']:
+                    # Request logs if necessary.
+                    if s.get('logs'):
+                        continue
                     logs = yield master.data.get(("steps", s['stepid'], 'logs'))
                     s['logs'] = list(logs)
                     for l in s['logs']:
                         l['url'] = get_url_for_log(master, build['builderid'], build['number'],
                                                    s['number'], l['slug'])
-                        if want_logs_content:
+                if want_logs_content:
+                    for s in build['steps']:
+                        for l in s['logs']:
+                            # Request logs content if necessary.
+                            if l.get('content'):
+                                continue
                             l['content'] = yield master.data.get(("logs", l['logid'], 'contents'))
-
-    else:  # we still need a list for the big zip
-        buildsteps = list(range(len(builds)))
-
-    # a big zip to connect everything together
-    for build, properties, steps, prev in zip(builds, buildproperties, buildsteps, prev_builds):
-        build['builder'] = buildersbyid[build['builderid']]
+    for build in builds:
         build['buildset'] = buildset
         build['url'] = getURLForBuild(
             master, build['builderid'], build['number'])
-
-        if want_properties:
-            build['properties'] = properties
-
-        if want_steps:
-            build['steps'] = list(steps)
-
-        if want_previous_build:
-            build['prev_build'] = prev
+    #LLVM_LOCAL_END
 
 
 # perhaps we need data api for users with sourcestamps/:id/users
