@@ -85,11 +85,17 @@ def getDetailsForBuild(master, build, want_properties=False, want_steps=False,
     build['parentbuild'] = parentbuild
     build['parentbuilder'] = parentbuilder
 
-    ret = yield getDetailsForBuilds(master, buildset, [build],
-                                    want_properties=want_properties, want_steps=want_steps,
-                                    want_previous_build=want_previous_build,
-                                    want_logs=want_logs,
-                                    want_logs_content=want_logs_content)
+    # getDetailsForBuilds() will request only the missing data.
+    # Don't try to call it in parallel.
+    # We will significantly improve performance in case of many reporters if 
+    # allow the first call to completely request the necessary data just once.
+    l = build.setdefault('details_lock', defer.DeferredLock())
+    ret = yield l.run(getDetailsForBuilds,
+                      master, buildset, [build],
+                      want_properties, want_steps,
+                      want_previous_build,
+                      want_logs,
+                      want_logs_content)
     return ret
 
 
