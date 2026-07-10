@@ -284,7 +284,15 @@ def parse_user_info_from_token(token: str, session_secret: str) -> dict[str, Any
         )
         raise KeyError(str(e)) from e
     except Exception as e:
-        log.err(e, "while decoding JWT session")
+        #LLVM_LOCAL_BEGIN
+        if type(e) is jwt.exceptions.DecodeError and 'Signature verification failed' in e.args:
+            # Do not log this particular faiure. It is a common one when buildbot
+            # gets restarted and WebUI users are still using old JWT session tokens.
+            # We do not want to spam logs with this.
+            pass
+        else:
+            log.err(e, "while decoding JWT session")
+        #LLVM_LOCAL_END
         raise KeyError(str(e)) from e
     # might raise KeyError: will be caught by caller, which makes the token invalid
     return decoded['user_info']
