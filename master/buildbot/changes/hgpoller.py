@@ -64,7 +64,7 @@ class HgPoller(base.ReconfigurablePollingChangeSource, StateMixin):
             branches = self.build_branches(kwargs.get('branch', None), kwargs.get('branches', None))
             kwargs["name"] = self.build_name(None, repourl, kwargs.get('bookmarks', None), branches)
 
-        self.initLock = defer.DeferredLock()
+        self.initLock3 = defer.DeferredLock() #LLVM_LOCAL
 
         super().__init__(repourl, **kwargs)
 
@@ -193,7 +193,7 @@ class HgPoller(base.ReconfigurablePollingChangeSource, StateMixin):
             f"branches: {', '.join(self.branches)}, in workdir '{self.workdir}' {status}"
         )
 
-    @deferredLocked('initLock')
+    @deferredLocked('initLock3') #LLVM_LOCAL
     @defer.inlineCallbacks
     def poll(self) -> InlineCallbacksType[None]:  # type: ignore[override]
         yield self._getChanges()
