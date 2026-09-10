@@ -136,7 +136,10 @@ class WorkerManager(MeasuredBuildbotServiceManager):
             except Exception as e:
                 old_conn.loseConnection()
                 log.msg(f"Got error while trying to ping connected worker {workerName}:{e}")
-            log.msg(f"Old connection for '{workerName}' was lost, accepting new")
+            # The ping took some time, and the new connection might have already been dropped.
+            log.msg(f"Old connection for '{workerName}' was lost, rejecting new one to avoid"
+                    " duplication, ready to accept the next connection.")
+            raise RuntimeError("rejecting first connection after worker arbitration")
 
         try:
             yield conn.remotePrint(message="attached")
