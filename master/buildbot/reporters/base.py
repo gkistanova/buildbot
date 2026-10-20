@@ -24,6 +24,7 @@ from twisted.internet import defer
 from twisted.python import log
 
 from buildbot import config
+from buildbot.process.results import FAILURE #LLVM_LOCAL
 from buildbot.reporters import utils
 from buildbot.util import service
 from buildbot.util import tuplematch
@@ -122,8 +123,13 @@ class ReporterBase(service.BuildbotService):
         try:
             reports = []
             assert self.generators is not None
+            generators_want_previous_build = [] #LLVM_LOCAL
             for g in self.generators:
                 if self._does_generator_want_key(g, key):
+                    #LLVM_LOCAL_BEGIN
+                    if hasattr(g.__class__, "_want_previous_build") and g._want_previous_build():
+                        generators_want_previous_build.append(g)
+                    #LLVM_LOCAL_END
                     try:
                         report = yield g.generate(self.master, self, key, msg)
                         if report is not None:
@@ -134,6 +140,40 @@ class ReporterBase(service.BuildbotService):
                             "Got exception when handling reporter events: "
                             f"key: {key} generator: {g}",
                         )
+
+            #LLVM_LOCAL_BEGIN
+            if (
+                generators_want_previous_build
+                and tuplematch.matchTuple(key, ("builds", None, "finished"))
+                and msg.get("builderid") is not None
+                and msg.get("number") is not None
+                and msg.get("results") is not None
+            ):
+                # Check if there is the next completed build.
+                next_build_id, next_build_results = yield self.master.db.builds.getNextBuild(
+                    builderid=msg["builderid"],
+                    number=msg["number"],
+                    scheduler_filter="main:",
+                )
+                if next_build_id is not None and next_build_results is not None:
+                    log.msg(
+                        f'{self.name}: builderid={msg["builderid"]}, build={msg["number"]}: Next build id {next_build_id} is already completed, results {next_build_results}.'
+                    )
+                    # Process reports for the mode change or problem.
+                    if next_build_results != msg["results"] or next_build_results == FAILURE:
+                        next_build = yield self.master.data.get(("builds", str(next_build_id)))
+                        for g in generators_want_previous_build:
+                            try:
+                                report = yield g.generate(self.master, self, key, next_build)
+                                if report is not None:
+                                    reports.append(report)
+                            except Exception as e:
+                                log.err(
+                                    e,
+                                    "Got exception when handling reporter events: "
+                                    f"key: {key} generator: {g}",
+                                )
+            #LLVM_LOCAL_END
 
             if reports:
                 yield self.sendMessage(reports)
