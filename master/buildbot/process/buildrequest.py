@@ -76,17 +76,51 @@ class BuildRequestCollapser:
             collapseRequestsFn = bldr.getCollapseRequestsFn()
             unclaim_brs = yield self._getUnclaimedBrs(builderid)
 
+            #LLVM_LOCAL_BEGIN
+            # Get only the latest unclaimed build request for that builder.
+            log.msg(
+                f">>>> collapse: brid={brid},builderid={builderid} to collapse to one of the top 2 brids in the queue: {unclaim_brs[-2:]}"
+            )
+            if unclaim_brs:
+                # Do not collapse to itself.
+                unclaim_br = unclaim_brs[-1]
+                unclaim_brs = (
+                    unclaim_brs[-2:]
+                    if unclaim_br["buildrequestid"] == br["buildrequestid"]
+                    else unclaim_brs[-1:]
+                )
+            log.msg(f">>>> collapse: unclaim_brs={unclaim_brs}")
+            #LLVM_LOCAL_END
+
             # short circuit if there is no merging to do
             if not collapseRequestsFn or not unclaim_brs:
+                #LLVM_LOCAL
+                log.msg(">>>> collapse: not collapseRequestsFn or not unclaim_brs. Continue enumerating brids.")
                 continue
 
             for unclaim_br in unclaim_brs:
                 if unclaim_br['buildrequestid'] == br['buildrequestid']:
+                    #LLVM_LOCAL
+                    log.msg(">>>> collapse: Do not collapse to itself. Continue enumerating brids.")
                     continue
 
                 canCollapse = yield collapseRequestsFn(self.master, bldr, br, unclaim_br)
                 if canCollapse is True:
                     brids_to_collapse.add(unclaim_br['buildrequestid'])
+                #LLVM_LOCAL_BEGIN
+                    log.msg(f">>>> collapse: brids_to_collapse={brids_to_collapse}")
+                    collapsed_submitted_at = unclaim_br['submitted_at']
+                    if collapsed_submitted_at < br['submitted_at']:
+                        log.msg(
+                            f"Collapse buildrequest {unclaim_br['buildrequestid']}. "
+                            f"Update buildrequest {br['buildrequestid']} submitted_at to {collapsed_submitted_at}"
+                        )
+                        yield self.master.db.buildrequests.setBuildRequestsSubmittedAt(
+                            [br["buildrequestid"]], collapsed_submitted_at
+                        )
+                else:
+                    log.msg(f">>>> collapse: collapseRequestsFn returned False for (self.master={self.master}, bldr={bldr}, br={br}, unclaim_br={unclaim_br})")
+                #LLVM_LOCAL_END
 
         collapsed_brids = []
         for brid in brids_to_collapse:
@@ -94,7 +128,12 @@ class BuildRequestCollapser:
             if claimed:
                 yield self.master.data.updates.completeBuildRequests([brid], SKIPPED)
                 collapsed_brids.append(brid)
+        #LLVM_LOCAL_BEGIN
+            else:
+                log.msg(f">>>> collapse: self.master.data.updates.claimBuildRequests([brid]) returned False for brid={brid}")
 
+        log.msg(f">>>> collapse: collapsed_brids={collapsed_brids}")
+        #LLVM_LOCAL_END        
         return collapsed_brids
 
 
