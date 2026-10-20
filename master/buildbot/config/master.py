@@ -207,6 +207,8 @@ class MasterConfig(util.ComparableMixin):
         self.protocols = {}
         self.buildbotNetUsageData = "basic"
 
+        self.ignoreOfflineWorkersTimeout = None #LLVM_LOCAL
+
         self.validation = {
             "branch": re.compile(r'^[\w.+/~-]*$'),
             "revision": re.compile(r'^[ \w\.\-/]*$'),
@@ -252,6 +254,7 @@ class MasterConfig(util.ComparableMixin):
         "changeHorizon",
         'db',
         "db_url",
+        "ignoreOfflineWorkersTimeout", #LLVM_LOCAL
         "logCompressionLimit",
         "logCompressionMethod",
         "logEncoding",
@@ -423,6 +426,8 @@ class MasterConfig(util.ComparableMixin):
 
         copy_int_param('changeHorizon')
         copy_int_param('logCompressionLimit')
+
+        copy_int_param('ignoreOfflineWorkersTimeout') #LLVM_LOCAL
 
         self.logCompressionMethod = config_dict.get(
             'logCompressionMethod',
