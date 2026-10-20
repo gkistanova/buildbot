@@ -184,6 +184,11 @@ class BuildDictLookAlike:
             "url",
             "workerid",
         ]
+        #LLVM_LOCAL_BEGIN
+        self.ignore_keys = [
+            "details_lock",
+        ]
+        #LLVM_LOCAL_END
         if extra_keys:
             self.keys.extend(extra_keys)
         if expected_missing_keys is not None:
@@ -193,12 +198,15 @@ class BuildDictLookAlike:
         self.assertions = assertions
 
     def __eq__(self, b: Any) -> bool:
-        if sorted(b.keys()) != self.keys:
+        #LLVM_LOCAL_BEGIN
+        b_keys = [k for k in b.keys() if k not in self.ignore_keys]
+        if sorted(b_keys) != self.keys:
             raise AssertionError(
                 'BuildDictLookAlike is not equal to build: '
-                f'Extra keys: {set(b.keys()) - set(self.keys)} '
-                f'Missing keys: {set(self.keys) - set(b.keys())}'
+                f'Extra keys: {set(b_keys) - set(self.keys)} '
+                f'Missing keys: {set(self.keys) - set(b_keys)}'
             )
+        #LLVM_LOCAL_END
         for k, v in self.assertions.items():
             if b[k] != v:
                 return False
