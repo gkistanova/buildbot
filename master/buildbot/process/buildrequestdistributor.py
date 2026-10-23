@@ -486,17 +486,22 @@ class BuildRequestDistributor(service.AsyncMultiService):
                 #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter END (not pending_builders)")
                 return False
 
-        bldr_name = pending_builders.pop(0)
-        # get the actual builder object
-        #log.msg(f">>> BuildRequestDistributor._activityLoop: botmaster.builders.get({bldr_name})...")
-        bldr = self.botmaster.builders.get(bldr_name)
-        #log.msg(f">>> BuildRequestDistributor._activityLoop: botmaster.builders.get({bldr_name}) returned {bldr}")
-        if bldr:
-            try:
-                yield self._maybeStartBuildsOnBuilder(bldr)
-            except Exception:
-                log.err(Failure(), f"from maybeStartBuild for builder '{bldr_name}'")
-        #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter END")
+        log.msg(f">>> BuildRequestDistributor._activityLoopIter: {len(pending_builders)} pending_builders")
+        # Process all pending builders
+        while pending_builders:
+            bldr_name = pending_builders.pop(0)
+            # get the actual builder object
+            #log.msg(f">>> BuildRequestDistributor._activityLoop: botmaster.builders.get({bldr_name})...")
+            bldr = self.botmaster.builders.get(bldr_name)
+            #log.msg(f">>> BuildRequestDistributor._activityLoop: botmaster.builders.get({bldr_name}) returned {bldr}")
+            if bldr:
+                try:
+                    log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOnBuilder({bldr_name}) START")
+                    yield self._maybeStartBuildsOnBuilder(bldr)
+                    log.msg(f">>> BuildRequestDistributor._maybeStartBuildsOnBuilder({bldr_name}) END")
+                except Exception:
+                    log.err(Failure(), f"from maybeStartBuild for builder '{bldr_name}'")
+            #log.msg(">>> BuildRequestDistributor._activityLoop: _activityLoopIter END")
         return True
     #LLVM_LOCAL end
 
