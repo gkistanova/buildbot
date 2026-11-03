@@ -162,7 +162,12 @@ class ReconnectingPBClientFactory(PBClientFactory, protocol.ReconnectingClientFa
         log.err(why)
 
 
-def decode(data: Any, encoding: str = 'utf-8', errors: str = 'strict') -> Any:
+# LLVM_LOCAL begin
+# TODO: Hack the error mode. Later address this properly to pass input
+# parameters down to map. We cannot trust strings we are getting
+# from users, but need to recover preserving as much as we could.
+def decode(data: Any, encoding: str = 'utf-8', errors: str = 'replace') -> Any:
+# LLVM_LOCAL end
     """We need to convert a dictionary where keys and values
     are bytes, to unicode strings.  This happens when a
     Python 2 worker sends a dictionary back to a Python 3 master.
