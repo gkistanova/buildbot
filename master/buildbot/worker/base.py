@@ -475,9 +475,18 @@ class AbstractWorker(service.BuildbotService):
         # The _detach_sub member is only ever used from tests.
         self._detached_sub = self.conn.notifyOnDisconnect(self.detached)
 
+        #LLVM_LOCAL_BEGIN
+        # Preprocess host info before storing in workerinfo.
+        # Formatting is not rendered in UI anyway, so, split it. And trim to 512
+        # symbols to keep the length under control.
+        host_info = " ".join(conn.info.get('host', "").split())
+        if (len(host_info) > 512):
+            host_info = f"{host_info[:512]} ..."
+        #LLVM_LOCAL_END
+
         workerinfo = {
             'admin': conn.info.get('admin'),  # type: ignore[attr-defined]
-            'host': conn.info.get('host'),  # type: ignore[attr-defined]
+            'host': host_info,  # type: ignore[attr-defined] #LLVM_LOCAL
             'access_uri': conn.info.get('access_uri'),  # type: ignore[attr-defined]
             'version': conn.info.get('version'),  # type: ignore[attr-defined]
         }
@@ -497,7 +506,19 @@ class AbstractWorker(service.BuildbotService):
             self.path_module = namedModule("posixpath")
             self.path_cls = PurePosixPath
 
-        log.msg("bot attached")
+        #LLVM_LOCAL_BEGIN
+        bot_info = (
+            f"  host: {workerinfo['host']}\n"
+            f"  admin: {workerinfo['admin']}\n"
+            f"  access_uri: {workerinfo['access_uri']}\n"
+            f"  version: {workerinfo['version']}\n"
+            f"  system: {self.worker_system}\n"
+            f"  worker_commands: {self.worker_commands}\n"
+            f"  basedir: {self.worker_basedir}\n"
+            f"  environ: {self.worker_environ}"
+        )
+        log.msg(f"bot attached\n{bot_info}")
+        #LLVM_LOCAL_END
         self.messageReceivedFromWorker()
         self.stopMissingTimer()
         yield self.updateWorker()
