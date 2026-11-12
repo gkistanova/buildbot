@@ -19,6 +19,7 @@ import calendar
 from typing import TYPE_CHECKING
 
 from twisted.internet import defer
+from twisted.python import log
 
 from buildbot.data import resultspec
 from buildbot.process import properties
