@@ -351,7 +351,7 @@ class BuildRequestsConnectorComponent(base.DBConnectorComponent):
             for batch in self.doBatch(brids, 100):
                 q = reqs_tbl.update()
                 q = q.where(reqs_tbl.c.id.in_(batch))
-                res = conn.execute(q, submitted_at=submitted_at)
+                res = conn.execute(q.values(submitted_at=submitted_at))
 
                 # if an incorrect number of rows were updated, then we failed.
                 if res.rowcount != len(batch):
