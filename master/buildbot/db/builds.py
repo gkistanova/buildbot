@@ -125,9 +125,12 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     .where(
                         (builds_tbl.c.builderid == builderid)
                         & (builds_tbl.c.number < number)
-                        & (builds_tbl.c.results != RETRY)
-                        & (builds_tbl.c.results != SKIPPED)
-                        & (builds_tbl.c.results != CANCELLED)
+                        & sa.or_(
+                            builds_tbl.c.results.is_(None),
+                            (builds_tbl.c.results != RETRY)
+                            & (builds_tbl.c.results != SKIPPED)
+                            & (builds_tbl.c.results != CANCELLED)
+                        )
                         & (buildset_properties_tbl.c.property_name == "scheduler")
                         # buildset_properties_tbl.c.property_value is a tuple '["name...", "Scheduler"]'
                         & buildset_properties_tbl.c.property_value.startswith(
@@ -145,9 +148,12 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     .where(
                         (builds_tbl.c.builderid == builderid)
                         & (builds_tbl.c.number < number)
-                        & (builds_tbl.c.results != RETRY)
-                        & (builds_tbl.c.results != SKIPPED)
-                        & (builds_tbl.c.results != CANCELLED)
+                        & sa.or_(
+                            builds_tbl.c.results.is_(None),
+                            (builds_tbl.c.results != RETRY)
+                            & (builds_tbl.c.results != SKIPPED)
+                            & (builds_tbl.c.results != CANCELLED)
+                        )
                     )
                     .order_by(sa.desc(builds_tbl.c.number))
                     .limit(1)
@@ -183,9 +189,12 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     .where(
                         (builds_tbl.c.builderid == builderid)
                         & (builds_tbl.c.number > number)
-                        & (builds_tbl.c.results != RETRY)
-                        & (builds_tbl.c.results != SKIPPED)
-                        & (builds_tbl.c.results != CANCELLED)
+                        & sa.or_(
+                            builds_tbl.c.results.is_(None),
+                            (builds_tbl.c.results != RETRY)
+                            & (builds_tbl.c.results != SKIPPED)
+                            & (builds_tbl.c.results != CANCELLED)
+                        )
                         & (buildset_properties_tbl.c.property_name == "scheduler")
                         # buildset_properties_tbl.c.property_value is a tuple '["name...", "Scheduler"]'
                         & buildset_properties_tbl.c.property_value.startswith(
@@ -203,9 +212,12 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     .where(
                         (builds_tbl.c.builderid == builderid)
                         & (builds_tbl.c.number > number)
-                        & (builds_tbl.c.results != RETRY)
-                        & (builds_tbl.c.results != SKIPPED)
-                        & (builds_tbl.c.results != CANCELLED)
+                        & sa.or_(
+                            builds_tbl.c.results.is_(None),
+                            (builds_tbl.c.results != RETRY)
+                            & (builds_tbl.c.results != SKIPPED)
+                            & (builds_tbl.c.results != CANCELLED)
+                        )
                     )
                     .order_by(builds_tbl.c.number)
                     .limit(1)
